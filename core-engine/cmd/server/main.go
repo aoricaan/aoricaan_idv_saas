@@ -63,7 +63,15 @@ func main() {
 	}))
 
 	http.HandleFunc("/admin/credits", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		if r.Method == http.MethodGet {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 			adminHandler.GetCredits(w, r)
 			return
 		}
@@ -71,7 +79,15 @@ func main() {
 	}))
 
 	http.HandleFunc("/admin/credits/add", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		if r.Method == http.MethodPost {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 			adminHandler.AddCredits(w, r)
 			return
 		}
@@ -79,7 +95,15 @@ func main() {
 	}))
 
 	http.HandleFunc("/admin/credits/simulate", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		if r.Method == http.MethodPost {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 			adminHandler.SimulateUsage(w, r)
 			return
 		}

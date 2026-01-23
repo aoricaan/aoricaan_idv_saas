@@ -140,6 +140,10 @@ type CreditsResponse struct {
 }
 
 func (h *AdminHandler) GetCredits(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	tenantID := r.Context().Value("tenant_id").(string)
 
 	// 1. Get Tenant for Balance

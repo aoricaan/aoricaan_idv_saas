@@ -5,6 +5,7 @@ export default function Dashboard({ token, onLogout }) {
     const [loading, setLoading] = useState(false);
     const [keyStatus, setKeyStatus] = useState(null);
     const [credits, setCredits] = useState({ balance: 0, transactions: [] });
+    const [showTopUpModal, setShowTopUpModal] = useState(false);
 
     useEffect(() => {
         fetchKeyStatus();
@@ -68,6 +69,28 @@ export default function Dashboard({ token, onLogout }) {
         }
     };
 
+    const buyCredits = async (amount) => {
+        setLoading(true);
+        try {
+            // Using existing endpoint to simulate purchase
+            const res = await fetch('http://localhost:8080/admin/credits/add', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: amount, description: `Top-up via Portal (${amount} Credits)` })
+            });
+            if (!res.ok) throw new Error('Failed to purchase credits');
+            await fetchCredits();
+            setShowTopUpModal(false);
+            alert("Purchase successful! (Simulated)");
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
     return (
         <div className="min-h-screen bg-gray-50">
             <nav className="bg-white shadow">
@@ -127,7 +150,12 @@ export default function Dashboard({ token, onLogout }) {
                             </div>
                             <div className="text-right">
                                 <div className="text-3xl font-bold text-gray-900">{credits.balance}</div>
-                                <div className="text-xs text-gray-500 uppercase tracking-wide">Credits</div>
+                                <button
+                                    onClick={() => setShowTopUpModal(true)}
+                                    className="mt-2 text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 cursor-pointer"
+                                >
+                                    + Buy Credits
+                                </button>
                             </div>
                         </div>
 
@@ -138,8 +166,8 @@ export default function Dashboard({ token, onLogout }) {
                                     Test Verification (-1)
                                 </button>
                             </div>
-                            <ul className="divide-y divide-gray-100">
-                                {credits.transactions.length === 0 ? (
+                            <ul className="divide-y divide-gray-100 max-h-60 overflow-y-auto">
+                                {(!credits.transactions || credits.transactions.length === 0) ? (
                                     <li className="py-2 text-sm text-gray-400 italic">No transactions yet.</li>
                                 ) : (
                                     credits.transactions.map((tx) => (
@@ -159,6 +187,50 @@ export default function Dashboard({ token, onLogout }) {
                     </div>
 
                 </div>
+
+                {/* Top Up Modal */}
+                {showTopUpModal && (
+                    <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                        <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                            <div className="fixed inset-0 bg-gray-500/75 transition-opacity" aria-hidden="true" onClick={() => setShowTopUpModal(false)}></div>
+                            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                            <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                                    <div className="sm:flex sm:items-start">
+                                        <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                                            <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">Top Up Credits</h3>
+                                            <div className="mt-2">
+                                                <p className="text-sm text-gray-500 mb-4">Select a package to top up your account instantly.</p>
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    {[100, 500, 1000].map(amount => (
+                                                        <button
+                                                            key={amount}
+                                                            onClick={() => buyCredits(amount)}
+                                                            disabled={loading}
+                                                            className="flex justify-between items-center w-full px-4 py-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
+                                                        >
+                                                            <span>{amount} Credits</span>
+                                                            <span className="font-bold text-gray-900">${(amount / 10).toFixed(2)}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                                    <button
+                                        type="button"
+                                        className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm cursor-pointer"
+                                        onClick={() => setShowTopUpModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );
