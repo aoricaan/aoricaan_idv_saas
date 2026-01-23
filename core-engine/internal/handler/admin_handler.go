@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aoricaan/idv-core/internal/config"
 	"github.com/aoricaan/idv-core/internal/domain"
 	"github.com/aoricaan/idv-core/internal/infra"
 	"github.com/golang-jwt/jwt/v5"
@@ -55,8 +56,8 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"exp":       time.Now().Add(24 * time.Hour).Unix(),
 	})
 
-	// TODO: Move secret to env var
-	tokenString, err := token.SignedString([]byte("mock-jwt-secret-key"))
+	// Generate Token
+	tokenString, err := token.SignedString(config.GetJWTSecret())
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
