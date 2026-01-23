@@ -19,3 +19,11 @@ VALUES (
         {"step_id": "step2", "type": "selfie", "config": {}}
     ]'
 ) ON CONFLICT DO NOTHING;
+
+-- Seed Tenant User (password: "admin123")
+INSERT INTO tenant_users (tenant_id, email, password_hash)
+VALUES (
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'admin@democorp.com',
+    '$2a$10$k/9/MTuevlEX61TDk366BeV9S2CmM2qqOcqacZwna03hADnepz45G'
+);

@@ -12,6 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ../core-engine/db:/docker-entrypoint-initdb.d
     networks:
       - idv_network
 
@@ -66,6 +67,15 @@ services:
     container_name: idv_web
     ports:
       - "3000:80"
+    networks:
+      - idv_network
+  admin-portal-web:
+    build:
+      context: ../admin-portal-web
+      dockerfile: Dockerfile
+    container_name: idv_admin
+    ports:
+      - "3001:80"
     networks:
       - idv_network
 

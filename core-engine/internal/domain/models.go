@@ -28,6 +28,7 @@ type Tenant struct {
 	ID             uuid.UUID `json:"id"`
 	Name           string    `json:"name"`
 	APIKeyHash     string    `json:"-"` // Never expose hash
+	APIKeyLast4    string    `json:"api_key_last_4,omitempty"`
 	WebhookURL     string    `json:"webhook_url"`
 	BrandingConfig JSONB     `json:"branding_config"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -85,4 +86,14 @@ type Session struct {
 	ExpiresAt        time.Time     `json:"expires_at"`
 	CreatedAt        time.Time     `json:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at"`
+}
+
+type TenantUser struct {
+	ID           uuid.UUID `json:"id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"` // Never expose password hash
+	Role         string    `json:"role"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
