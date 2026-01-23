@@ -6,12 +6,14 @@ function App() {
   const [error, setError] = useState(null)
   const [session, setSession] = useState(null)
   const [nextStep, setNextStep] = useState(null)
+  const [token, setToken] = useState(null)
 
   useEffect(() => {
     const fetchSession = async () => {
       // 1. Get Token from URL
       const params = new URLSearchParams(window.location.search)
       const token = params.get('token')
+      setToken(token)
 
       if (!token) {
         setError('No Session Token Found')
@@ -78,7 +80,7 @@ function App() {
 
       <main>
         {nextStep ? (
-          <StepRenderer step={nextStep} onStepComplete={handleStepComplete} />
+          <StepRenderer step={nextStep} token={token} onStepComplete={handleStepComplete} />
         ) : (
           <div style={{ padding: '20px', background: '#d4edda', color: '#155724' }}>
             <h2>Verification Complete!</h2>

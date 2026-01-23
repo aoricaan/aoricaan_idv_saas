@@ -10,11 +10,13 @@ import (
 
 	"github.com/aoricaan/idv-core/internal/domain"
 	"github.com/aoricaan/idv-core/internal/infra"
+	"github.com/aoricaan/idv-core/internal/service"
 	"github.com/google/uuid"
 )
 
 type SessionHandler struct {
-	Repo *infra.Repository
+	Repo    *infra.Repository
+	Storage *service.StorageService
 }
 
 type InitSessionRequest struct {
@@ -198,5 +200,60 @@ func (h *SessionHandler) InitSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+type UploadURLRequest struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+}
+
+type UploadURLResponse struct {
+	UploadURL string `json:"upload_url"`
+	FileKey   string `json:"file_key"`
+}
+
+func (h *SessionHandler) GenerateUploadURL(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, "Missing token", http.StatusBadRequest)
+		return
+	}
+
+	session, err := h.Repo.GetSessionByToken(token)
+	if err != nil {
+		http.Error(w, "Invalid session", http.StatusNotFound)
+		return
+	}
+
+	var req UploadURLRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: Validate content type (e.g. image/jpeg, image/png only)
+
+	// Fetch Tenant to use ID in path (optimization: could add TenantID to Session struct)
+	// For MVP, using default tenant ID. Ideally we validate flow ownership.
+
+	uploadURL, fileKey, err := h.Storage.GeneratePresignedUploadURL(
+		r.Context(),
+		"tenant-default", // TODO: Fetch real tenant ID from Flow
+		session.Token,
+		req.Filename,
+	)
+	if err != nil {
+		http.Error(w, "Failed to generate upload URL", http.StatusInternalServerError)
+		return
+	}
+
+	resp := UploadURLResponse{
+		UploadURL: uploadURL,
+		FileKey:   fileKey,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*") // CORS
 	json.NewEncoder(w).Encode(resp)
 }
