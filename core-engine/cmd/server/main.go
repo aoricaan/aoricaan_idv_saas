@@ -62,6 +62,30 @@ func main() {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}))
 
+	http.HandleFunc("/admin/credits", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			adminHandler.GetCredits(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
+
+	http.HandleFunc("/admin/credits/add", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			adminHandler.AddCredits(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
+
+	http.HandleFunc("/admin/credits/simulate", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			adminHandler.SimulateUsage(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
+
 	http.HandleFunc("/admin/api-key/status", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Origin", "*")

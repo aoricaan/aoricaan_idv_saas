@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aoricaan/idv-core/internal/domain"
 	"github.com/aoricaan/idv-core/internal/infra"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -130,4 +131,70 @@ func (h *AdminHandler) GetAPIKeyStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// Credits Response
+type CreditsResponse struct {
+	Balance      int                        `json:"balance"`
+	Transactions []domain.CreditTransaction `json:"transactions"`
+}
+
+func (h *AdminHandler) GetCredits(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.Context().Value("tenant_id").(string)
+
+	// 1. Get Tenant for Balance
+	tenant, err := h.Repo.GetTenantByID(tenantID)
+	if err != nil {
+		http.Error(w, "Tenant not found", http.StatusNotFound)
+		return
+	}
+
+	// 2. Get Transactions
+	txs, err := h.Repo.GetCreditTransactions(tenantID, 5) // Last 5
+	if err != nil {
+		http.Error(w, "Failed to fetch transactions", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(CreditsResponse{
+		Balance:      tenant.CreditsBalance,
+		Transactions: txs,
+	})
+}
+
+// Request for adding credits
+type AddCreditsRequest struct {
+	Amount      int    `json:"amount"`
+	Description string `json:"description"`
+}
+
+func (h *AdminHandler) AddCredits(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.Context().Value("tenant_id").(string)
+
+	var req AddCreditsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	err := h.Repo.AddCredits(tenantID, req.Amount, req.Description)
+	if err != nil {
+		http.Error(w, "Failed to add credits", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *AdminHandler) SimulateUsage(w http.ResponseWriter, r *http.Request) {
+	tenantID := r.Context().Value("tenant_id").(string)
+
+	// Deduct 1 credit
+	err := h.Repo.AddCredits(tenantID, -1, "Verification Usage (Simulation)")
+	if err != nil {
+		http.Error(w, "Failed to deduct credit", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

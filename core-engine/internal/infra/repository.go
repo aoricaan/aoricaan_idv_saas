@@ -38,8 +38,8 @@ func (r *Repository) RotateTenantAPIKey(tenantID string, newHash string, last4 s
 func (r *Repository) GetTenantByID(id string) (*domain.Tenant, error) {
 	var t domain.Tenant
 	var last4 sql.NullString
-	query := `SELECT id, name, branding_config, api_key_last_4 FROM tenants WHERE id = $1`
-	err := r.db.QueryRow(query, id).Scan(&t.ID, &t.Name, &t.BrandingConfig, &last4)
+	query := `SELECT id, name, branding_config, api_key_last_4, credits_balance FROM tenants WHERE id = $1`
+	err := r.db.QueryRow(query, id).Scan(&t.ID, &t.Name, &t.BrandingConfig, &last4, &t.CreditsBalance)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("tenant not found")
 	}
@@ -126,4 +126,45 @@ func (r *Repository) GetTenantUserByEmail(email string) (*domain.TenantUser, err
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *Repository) AddCredits(tenantID string, amount int, description string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Update Balance
+	_, err = tx.Exec(`UPDATE tenants SET credits_balance = credits_balance + $1, updated_at = NOW() WHERE id = $2`, amount, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to update balance: %w", err)
+	}
+
+	// 2. Insert Transaction Log
+	_, err = tx.Exec(`INSERT INTO credit_transactions (tenant_id, amount, description) VALUES ($1, $2, $3)`, tenantID, amount, description)
+	if err != nil {
+		return fmt.Errorf("failed to insert transaction: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+func (r *Repository) GetCreditTransactions(tenantID string, limit int) ([]domain.CreditTransaction, error) {
+	query := `SELECT id, tenant_id, amount, description, created_at FROM credit_transactions WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2`
+	rows, err := r.db.Query(query, tenantID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txs []domain.CreditTransaction
+	for rows.Next() {
+		var tx domain.CreditTransaction
+		if err := rows.Scan(&tx.ID, &tx.TenantID, &tx.Amount, &tx.Description, &tx.CreatedAt); err != nil {
+			return nil, err
+		}
+		txs = append(txs, tx)
+	}
+	return txs, nil
 }
