@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/aoricaan/idv-core/internal/handler"
 	"github.com/aoricaan/idv-core/internal/infra"
+	"github.com/aoricaan/idv-core/internal/service"
 )
 
 func main() {
@@ -20,7 +22,19 @@ func main() {
 	// rdb, _ := infra.InitRedis() // Using DB for MVP session first
 
 	repo := infra.NewRepository(db)
-	sessionHandler := &handler.SessionHandler{Repo: repo}
+
+	blobStorage, err := infra.NewBlobStorage()
+	if err != nil {
+		log.Fatalf("MinIO Init failed: %v", err)
+	}
+	// Ensure bucket exists
+	if err := blobStorage.EnsureBucket(context.Background()); err != nil {
+		log.Printf("WARNING: Failed to ensure bucket: %v", err)
+	}
+
+	storageService := service.NewStorageService(blobStorage)
+
+	sessionHandler := &handler.SessionHandler{Repo: repo, Storage: storageService}
 	adminHandler := &handler.AdminHandler{Repo: repo}
 
 	// 2. Routes
@@ -159,6 +173,23 @@ func main() {
 
 		if r.Method == http.MethodPost {
 			sessionHandler.SubmitStep(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	})
+
+	http.HandleFunc("/api/v1/sessions/upload-url", func(w http.ResponseWriter, r *http.Request) {
+		// CORS Preflight
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodPost {
+			sessionHandler.GenerateUploadURL(w, r)
 			return
 		}
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
