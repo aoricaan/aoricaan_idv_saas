@@ -54,6 +54,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
       - POSTGRES_DB=${DB_NAME:-idv_core}
       - REDIS_ADDR=redis:6379
+      - JWT_SECRET=${JWT_SECRET:-super-secret-production-key}
     depends_on:
       - postgres
       - redis

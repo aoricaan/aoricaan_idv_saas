@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aoricaan/idv-core/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -31,7 +32,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte("mock-jwt-secret-key"), nil
+			return config.GetJWTSecret(), nil
 		})
 
 		if err != nil || !token.Valid {
