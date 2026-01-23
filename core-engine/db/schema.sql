@@ -41,3 +41,14 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 -- Metadata for quick tenant lookup
 CREATE INDEX idx_tenants_api_key_hash ON tenants(api_key_hash);
+
+-- Table: tenant_users
+CREATE TABLE IF NOT EXISTS tenant_users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL, -- Bcrypt hash
+    role VARCHAR(50) DEFAULT 'ADMIN', -- ADMIN, VIEWER
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

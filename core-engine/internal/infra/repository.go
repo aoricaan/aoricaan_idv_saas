@@ -29,6 +29,29 @@ func (r *Repository) GetTenantByAPIKeyHash(hash string) (*domain.Tenant, error) 
 	return &t, nil
 }
 
+func (r *Repository) RotateTenantAPIKey(tenantID string, newHash string, last4 string) error {
+	query := `UPDATE tenants SET api_key_hash = $1, api_key_last_4 = $2, updated_at = NOW() WHERE id = $3`
+	_, err := r.db.Exec(query, newHash, last4, tenantID)
+	return err
+}
+
+func (r *Repository) GetTenantByID(id string) (*domain.Tenant, error) {
+	var t domain.Tenant
+	var last4 sql.NullString
+	query := `SELECT id, name, branding_config, api_key_last_4 FROM tenants WHERE id = $1`
+	err := r.db.QueryRow(query, id).Scan(&t.ID, &t.Name, &t.BrandingConfig, &last4)
+	if err == sql.ErrNoRows {
+		return nil, errors.New("tenant not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if last4.Valid {
+		t.APIKeyLast4 = last4.String
+	}
+	return &t, nil
+}
+
 func (r *Repository) GetFlowByName(tenantID string, flowName string) (*domain.Flow, error) {
 	var f domain.Flow
 	query := `SELECT id, name, steps_configuration FROM flows WHERE tenant_id = $1 AND name = $2`
@@ -91,4 +114,16 @@ func (r *Repository) UpdateSession(s *domain.Session) error {
 		return fmt.Errorf("failed to update session: %w", err)
 	}
 	return nil
+}
+
+func (r *Repository) GetTenantUserByEmail(email string) (*domain.TenantUser, error) {
+	query := `SELECT id, tenant_id, email, password_hash, role, created_at, updated_at FROM tenant_users WHERE email = $1`
+	row := r.db.QueryRow(query, email)
+
+	var user domain.TenantUser
+	err := row.Scan(&user.ID, &user.TenantID, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
