@@ -1,0 +1,232 @@
+Orquestador de Identidad (IDV SaaS)
+Versión del Documento: 1.0 Enfoque: Hosted Webflow (Redirección Segura), Multi-tenant & High-Performance.
+
+1. Visión General
+El sistema es una plataforma BaaS (Backend as a Service) que permite a empresas integrar flujos de validación de identidad complejos mediante una integración simple ("Hosted Redirect"). La plataforma gestiona la seguridad, la captura de evidencias y la lógica de negocio, devolviendo únicamente resultados verificados al cliente.
+
+2. Arquitectura del Sistema
+El ecosistema se compone de tres pilares desacoplados para garantizar seguridad y escalabilidad:
+
+Core Engine (Go): El cerebro. Gestiona las sesiones, la máquina de estados y las integraciones con proveedores de OCR/Biometría. No tiene interfaz gráfica.
+
+Secure Webflow (React/Next.js): La cara del usuario. Es una aplicación web "White-label" que se adapta visualmente a la marca del cliente. Renderiza los pasos dinámicamente según la configuración del backend.
+
+Admin Dashboard: Panel de control para que los clientes configuren sus flujos, vean métricas y gestionen sus API Keys.
+
+3. Stack Tecnológico Seleccionado
+Capa	Tecnología	Justificación
+Backend Core	Go (Golang)	Alta concurrencia, tipado estático y latencia mínima para validaciones en tiempo real.
+Base de Datos	PostgreSQL	Relacional robusta. Uso de esquemas o tenant_id para aislamiento estricto de clientes.
+Gestión de Estado	Redis	Fundamental para la "Máquina de Estados". Guarda el progreso del usuario con TTL (expiración automática).
+Frontend	React / Next.js	Permite renderizado rápido y manipulación del DOM para captura de cámara fluida.
+Infraestructura	Docker / K8s	Contenerización para despliegue escalable y agnóstico de la nube.
+Almacenamiento	S3 / GCS	Buckets privados con políticas de ciclo de vida (borrado a las 24h) para evidencias.
+4. El Flujo de Integración (The Secure Handshake)
+Este es el mecanismo crítico que permite la redirección segura sin exponer la lógica de negocio ni permitir manipulaciones.
+
+Fase A: Inicialización (Server-to-Server)
+El servidor del cliente ("Cliente A") contacta a nuestro Core Engine.
+
+Request: POST /api/v1/sessions
+
+Header: Authorization: Bearer <API_KEY_CLIENTE_A>
+
+Body: { "flow_id": "flow_registro_usuarios", "user_reference": "user_123" }
+
+Lógica Core: Valida credenciales, recupera la configuración del flujo y crea una sesión en Redis.
+
+Response: { "redirect_url": "https://verify.tudominio.com/start?token=JWsT...encr1pt3d...", "expires_in": 900 }
+
+Fase B: Ejecución (Browser)
+El cliente redirige al usuario a la redirect_url.
+
+Frontend Load: Nuestra app lee el token de la URL.
+
+Config Fetch: Consulta al Core: "¿Qué colores uso? ¿Cuál es el primer paso?".
+
+State Machine: El usuario completa el paso 1 (ej. Foto INE). El Core valida y responde: "OK, siguiente paso: Selfie".
+
+Nota de Seguridad: Si el usuario intenta forzar la URL del paso 3, el Core revisa Redis, ve que no ha completado el paso 2 y bloquea la petición.
+
+Fase C: Cierre y Notificación
+Una vez completados los n pasos:
+
+El Core procesa la validación final.
+
+Webhook: Se envía un POST asíncrono al servidor del cliente: { "event": "verification.completed", "status": "approved", "ref": "user_123" }.
+
+Return: El usuario es redirigido de vuelta a la app del cliente (ej. app-cliente.com/callback).
+
+5. Diseño de Base de Datos (Multi-Tenant)
+Tabla: tenants
+Perfil del cliente corporativo.
+
+id (UUID)
+
+api_key_hash (String - Hash SHA256)
+
+webhook_url (String)
+
+branding_config (JSONB) -> { "primary_color": "#FF0000", "logo": "url..." }
+
+Tabla: flows
+Define el orden y tipo de pasos. Esto permite que cada cliente tenga procesos distintos.
+
+id (UUID)
+
+tenant_id (FK)
+
+steps_config (JSONB) -> ["intro_screen", "document_capture_front", "document_capture_back", "liveness_video", "curp_validation"]
+
+Tabla: sessions
+Registro transaccional efímero.
+
+token (Index, Unique)
+
+current_step_index (Int)
+
+status (Enum: PENDING, APPROVED, REJECTED)
+
+collected_data (JSONB - Encrypted) -> Solo metadatos, no imágenes pesadas.
+
+6. Seguridad y Cumplimiento (Compliance)
+Blindaje de Flujo (Anti-Tampering):
+
+La configuración del flujo nunca viaja al frontend. El frontend es "tonto", solo renderiza lo que el backend le dice paso a paso.
+
+Privacidad de Datos (GDPR/LFPDPPP):
+
+Zero-Persistence Policy: Las imágenes de documentos se guardan en S3 con una regla de ciclo de vida que las elimina físicamente a las X horas de procesarse.
+
+Cifrado: Campos sensibles en DB cifrados con llaves simétricas rotativas.
+
+Integridad:
+
+Los Webhooks enviados al cliente incluyen una firma HMAC en el header para que el cliente pueda verificar que la notificación realmente viene de nosotros.
+
+7. Roadmap de Desarrollo (MVP)
+Sprint 1: API en Go con endpoints básicos de sesión (/init, /check-status) + Base de datos Postgres.
+
+Sprint 2: Frontend React básico que lea un token y muestre una pantalla de "Hola".
+
+Sprint 3: Integración del primer validador real (OCR o Liveness dummy) y la lógica de la máquina de estados en Go.
+
+Sprint 4: Sistema de Webhooks y configuración dinámica de estilos (JSON branding).
+
+La configuración de los steps ocurre en dos niveles: Nivel de Datos (Backend) y Nivel de Interfaz (Dashboard).
+
+Aquí te detallo cómo se estructura esto para que sea escalable y seguro.
+
+1. ¿Dónde se guardan? (Nivel Base de Datos)
+Físicamente, la configuración vive en tu base de datos PostgreSQL. Utilizamos una columna de tipo JSONB dentro de la tabla flows. Esto es vital porque el tipo JSONB permite que la estructura sea flexible (unos clientes querrán 3 pasos, otros 5) y permite consultas rápidas.
+
+Esquema de la Tabla flows:
+
+SQL
+CREATE TABLE flows (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id),
+    name VARCHAR(255),
+    description TEXT,
+    -- Aquí vive la magia:
+    steps_configuration JSONB NOT NULL, 
+    created_at TIMESTAMP DEFAULT NOW()
+);
+Ejemplo del JSON almacenado (steps_configuration): No guardamos solo una lista de nombres strings, sino un Array de Objetos. Esto permite pasar parámetros específicos a cada paso (ej. configurar cuántos intentos permites en el Liveness).
+
+JSON
+[
+  {
+    "step_id": "intro_01",
+    "type": "welcome_screen",
+    "config": {
+      "title": "Verifica tu identidad",
+      "button_text": "Comenzar"
+    }
+  },
+  {
+    "step_id": "doc_front_02",
+    "type": "document_capture",
+    "config": {
+      "side": "front",
+      "allowed_docs": ["INE", "PASSPORT"],
+      "auto_capture": true
+    }
+  },
+  {
+    "step_id": "liveness_03",
+    "type": "liveness_check",
+    "config": {
+      "difficulty": "hard",
+      "allow_glasses": false
+    }
+  }
+]
+2. ¿Cómo los configura el Cliente? (Nivel Dashboard)
+El cliente no escribe JSON. Para él, construyes una interfaz "No-Code" o "Flow Builder" en tu Dashboard.
+
+El Lienzo (Canvas): Una lista vertical donde el cliente ve el orden de ejecución.
+
+La Librería (Sidebar): Una lista de componentes disponibles (OCR, Selfie, Firma, OTP, Carga de Archivo).
+
+Panel de Propiedades: Al hacer clic en un paso, se abre un menú lateral para editar la config de ese paso específico.
+
+El cliente arrastra un bloque "Captura INE" al lienzo, y el frontend genera el JSON que vimos arriba y lo manda a tu API.
+
+3. ¿Cómo los interpreta el sistema? (Lógica del Core en Go)
+Aquí es donde entra tu Máquina de Estados. Cuando el usuario está en el flujo, tu Backend (Go) lee ese JSON y actúa como un "director de orquesta".
+
+Supongamos que el usuario acaba de terminar el paso 1. Tu backend hace lo siguiente:
+
+Busca la sesión en Redis: session_data.current_index = 1.
+
+Busca la configuración del flujo en Postgres.
+
+Mira el Array de pasos y dice: "¿Qué hay en la posición current_index + 1?".
+
+Encuentra: {"type": "liveness_check"}.
+
+Responde al Frontend: "El siguiente paso es Liveness. Aquí tienes los parámetros para renderizar la cámara".
+
+Lógica simplificada en Go:
+
+Go
+// Definición de la estructura del paso
+type StepConfig struct {
+    StepID string                 `json:"step_id"`
+    Type   string                 `json:"type"`   // ej: "document_capture"
+    Config map[string]interface{} `json:"config"` // Parámetros flexibles
+}
+
+// Función para obtener el siguiente paso
+func GetNextStep(flowConfig []StepConfig, currentIndex int) *StepConfig {
+    if currentIndex + 1 < len(flowConfig) {
+        return &flowConfig[currentIndex + 1]
+    }
+    return nil // Flujo terminado
+}
+4. Catálogo de Steps (El Menú)
+Para que esto funcione, tú como desarrollador del sistema defines un "Catálogo de Steps Soportados". Estos son los bloques de Lego que le ofreces a tus clientes.
+
+Los más comunes en la industria son:
+
+welcome_screen: Pantalla informativa con logo y texto legal.
+
+document_capture: Abre cámara, detecta bordes y recorta (Parámetros: Frente, Reverso, Tipo de Doc).
+
+liveness_video: Pide al usuario mover la cabeza o decir una frase (Prueba de vida).
+
+face_match: Proceso interno (sin UI) que compara la foto del Doc vs la Selfie.
+
+data_input: Formulario manual (ej. ingresar CURP o Email si el OCR falla).
+
+consent_signature: Pantalla para firmar con el dedo (aceptación de términos).
+
+success_screen / fail_screen: Pantallas finales.
+
+Resumen
+Se configuran en: El Dashboard del cliente (Visualmente).
+
+Se guardan en: PostgreSQL (Columna JSONB en tabla flows).
+
+Se ejecutan en: El Core (Go) iterando sobre el array del JSON paso a paso.
