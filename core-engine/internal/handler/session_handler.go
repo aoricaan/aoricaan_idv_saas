@@ -166,7 +166,18 @@ func (h *SessionHandler) InitSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Find Flow
+	// 3. Check Credits & Deduct
+	if tenant.CreditsBalance <= 0 {
+		http.Error(w, "Insufficient credits", http.StatusPaymentRequired)
+		return
+	}
+
+	if err := h.Repo.AddCredits(tenant.ID.String(), -1, fmt.Sprintf("Session Usage (%s)", req.UserReference)); err != nil {
+		http.Error(w, "Failed to process credit deduction", http.StatusInternalServerError)
+		return
+	}
+
+	// 4. Find Flow
 	// For MVP, we assume the Client sends the FLOW NAME or ID.
 	// Adapting to use FlowName if ID is not UUID, or just simple FlowName lookup
 	flow, err := h.Repo.GetFlowByName(tenant.ID.String(), req.FlowID)

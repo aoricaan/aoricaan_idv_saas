@@ -18,8 +18,8 @@ func NewRepository(db *sql.DB) *Repository {
 
 func (r *Repository) GetTenantByAPIKeyHash(hash string) (*domain.Tenant, error) {
 	var t domain.Tenant
-	query := `SELECT id, name, branding_config FROM tenants WHERE api_key_hash = $1`
-	err := r.db.QueryRow(query, hash).Scan(&t.ID, &t.Name, &t.BrandingConfig)
+	query := `SELECT id, name, branding_config, credits_balance FROM tenants WHERE api_key_hash = $1`
+	err := r.db.QueryRow(query, hash).Scan(&t.ID, &t.Name, &t.BrandingConfig, &t.CreditsBalance)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("tenant not found")
 	}
