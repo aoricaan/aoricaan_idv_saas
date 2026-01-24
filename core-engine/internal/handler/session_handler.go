@@ -72,13 +72,16 @@ func (h *SessionHandler) SubmitStep(w http.ResponseWriter, r *http.Request) {
 	flow, err := h.Repo.GetFlowByID(session.FlowID.String())
 	if err == nil {
 		if session.CurrentStepIndex >= len(flow.StepsConfiguration) {
+			session.Status = domain.StatusReview
+		} else {
 			session.Status = domain.StatusInProgress
 		}
 	}
 
 	// 6. Save
 	if err := h.Repo.UpdateSession(session); err != nil {
-		http.Error(w, "Failed to update session", http.StatusInternalServerError)
+		fmt.Printf("ERROR: Failed to update session: %v\n", err)
+		http.Error(w, fmt.Sprintf("Failed to update session: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -200,7 +203,8 @@ func (h *SessionHandler) InitSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Repo.CreateSession(session); err != nil {
-		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		fmt.Printf("ERROR: Failed to create session: %v\n", err)
+		http.Error(w, fmt.Sprintf("Failed to create session: %v", err), http.StatusInternalServerError)
 		return
 	}
 

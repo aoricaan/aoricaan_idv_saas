@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aoricaan/idv-core/internal/domain"
 )
@@ -167,4 +168,60 @@ func (r *Repository) GetCreditTransactions(tenantID string, limit int) ([]domain
 		txs = append(txs, tx)
 	}
 	return txs, nil
+}
+
+func (r *Repository) ListSessions(tenantID string, limit int, search string) ([]domain.Session, error) {
+	// Base query
+	query := `
+		SELECT token, flow_id, user_reference, current_step_index, status, created_at 
+		FROM sessions 
+		WHERE flow_id IN (SELECT id FROM flows WHERE tenant_id = $1)
+	`
+	args := []interface{}{tenantID}
+	argIdx := 2
+
+	// Add search filter if provided
+	if search != "" {
+		query += fmt.Sprintf(" AND user_reference ILIKE $%d", argIdx)
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	// Add Order and Limit
+	// Prioritize REVIEW_REQUIRED, then PENDING, then others
+	query += fmt.Sprintf(`
+		ORDER BY 
+			CASE 
+				WHEN status = 'REVIEW_REQUIRED' THEN 0 
+				WHEN status = 'PENDING' THEN 1 
+				ELSE 2 
+			END, 
+			created_at DESC 
+		LIMIT $%d`, argIdx)
+
+	args = append(args, limit)
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []domain.Session
+	for rows.Next() {
+		var s domain.Session
+		var createdAt time.Time // Scan into local variable if needed or add to struct
+		// Scan simplified for list view
+		if err := rows.Scan(&s.Token, &s.FlowID, &s.UserReference, &s.CurrentStepIndex, &s.Status, &createdAt); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, nil
+}
+
+func (r *Repository) UpdateSessionStatus(token string, status domain.SessionStatus) error {
+	query := `UPDATE sessions SET status = $1, updated_at = NOW() WHERE token = $2`
+	_, err := r.db.Exec(query, status, token)
+	return err
 }
