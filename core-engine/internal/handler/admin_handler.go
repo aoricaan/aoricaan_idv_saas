@@ -4,19 +4,23 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aoricaan/idv-core/internal/config"
 	"github.com/aoricaan/idv-core/internal/domain"
 	"github.com/aoricaan/idv-core/internal/infra"
+	"github.com/aoricaan/idv-core/internal/service"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AdminHandler struct {
-	Repo *infra.Repository
+	Repo    *infra.Repository
+	Storage *service.StorageService
 }
 
 type LoginRequest struct {
@@ -198,6 +202,106 @@ func (h *AdminHandler) SimulateUsage(w http.ResponseWriter, r *http.Request) {
 	err := h.Repo.AddCredits(tenantID, -1, "Verification Usage (Simulation)")
 	if err != nil {
 		http.Error(w, "Failed to deduct credit", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// ----------------------------------------
+// Admin Review Endpoints
+// ----------------------------------------
+
+func (h *AdminHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
+	tenantID, _ := r.Context().Value("tenant_id").(string)
+	search := r.URL.Query().Get("search")
+
+	sessions, err := h.Repo.ListSessions(tenantID, 50, search)
+	if err != nil {
+		fmt.Printf("ERROR: Failed to list sessions: %v\n", err)
+		http.Error(w, fmt.Sprintf("Failed to list sessions: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sessions)
+}
+
+type SessionReviewResponse struct {
+	Session  *domain.Session   `json:"session"`
+	Images   map[string]string `json:"images"` // Presigned URLs
+	TenantID string            `json:"tenant_id"`
+}
+
+func (h *AdminHandler) GetSessionReview(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, "Missing token", http.StatusBadRequest)
+		return
+	}
+
+	session, err := h.Repo.GetSessionByToken(token)
+	if err != nil {
+		http.Error(w, "Session not found", http.StatusNotFound)
+		return
+	}
+
+	// 2. Generate Presigned GET URLs for artifacts
+	images := make(map[string]string)
+
+	// Helper to sign if exists
+	sign := func(keyName string) {
+		if val, ok := session.CollectedData[keyName].(string); ok && val != "" {
+			url, err := h.Storage.GeneratePresignedGetURL(r.Context(), val)
+			if err == nil {
+				images[keyName] = url
+			}
+		}
+	}
+
+	sign("document_front")
+	sign("selfie")
+
+	resp := SessionReviewResponse{
+		Session:  session,
+		Images:   images,
+		TenantID: session.FlowID.String(), // Approximate
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+type ReviewDecisionRequest struct {
+	Status string `json:"status"` // approved, rejected
+	Reason string `json:"reason"`
+}
+
+func (h *AdminHandler) DecideSession(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, "Missing token", http.StatusBadRequest)
+		return
+	}
+
+	var req ReviewDecisionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate status
+	upperStatus := strings.ToUpper(req.Status)
+	status := domain.SessionStatus(upperStatus)
+	if status != domain.StatusApproved && status != domain.StatusRejected {
+		http.Error(w, "Invalid status", http.StatusBadRequest)
+		return
+	}
+
+	// Update DB
+	err := h.Repo.UpdateSessionStatus(token, status)
+	if err != nil {
+		http.Error(w, "Failed to update status", http.StatusInternalServerError)
 		return
 	}
 

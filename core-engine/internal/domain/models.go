@@ -93,6 +93,7 @@ const (
 	StatusApproved   SessionStatus = "APPROVED"
 	StatusRejected   SessionStatus = "REJECTED"
 	StatusExpired    SessionStatus = "EXPIRED"
+	StatusReview     SessionStatus = "REVIEW_REQUIRED"
 )
 
 type Session struct {

@@ -38,7 +38,7 @@ func (s *StorageService) GeneratePresignedGetURL(ctx context.Context, objectKey 
 	expiry := time.Duration(1) * time.Hour
 	reqParams := make(url.Values)
 
-	presignedURL, err := s.Blob.Client.PresignedGetObject(ctx, s.Blob.Bucket, objectKey, expiry, reqParams)
+	presignedURL, err := s.Blob.SignerClient.PresignedGetObject(ctx, s.Blob.Bucket, objectKey, expiry, reqParams)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate presigned get url: %w", err)
 	}

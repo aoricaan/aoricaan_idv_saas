@@ -35,7 +35,7 @@ func main() {
 	storageService := service.NewStorageService(blobStorage)
 
 	sessionHandler := &handler.SessionHandler{Repo: repo, Storage: storageService}
-	adminHandler := &handler.AdminHandler{Repo: repo}
+	adminHandler := &handler.AdminHandler{Repo: repo, Storage: storageService}
 
 	// 2. Routes
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -194,6 +194,55 @@ func main() {
 		}
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	})
+
+	http.HandleFunc("/admin/sessions", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodGet {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			adminHandler.ListSessions(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
+
+	http.HandleFunc("/admin/sessions/detail", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		// Using query param ?token=... style for simplicity with http.ServeMux
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodGet {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			adminHandler.GetSessionReview(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
+
+	http.HandleFunc("/admin/sessions/decision", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodPost {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			adminHandler.DecideSession(w, r)
+			return
+		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
 
 	// 3. Start
 	if err := http.ListenAndServe(":8080", nil); err != nil {
