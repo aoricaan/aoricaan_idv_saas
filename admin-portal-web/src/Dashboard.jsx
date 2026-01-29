@@ -44,7 +44,10 @@ export default function Dashboard({ token, onLogout }) {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             });
-            if (!res.ok) throw new Error('Failed to rotate key');
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(errorText || 'Failed to rotate key');
+            }
             const data = await res.json();
             setNewKey(data.new_api_key);
             fetchKeyStatus();

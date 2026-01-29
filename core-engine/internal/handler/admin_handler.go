@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -92,9 +93,11 @@ func (h *AdminHandler) RotateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 	// 4. Update DB (Saving last 4 chars)
 	last4 := newKey[len(newKey)-4:]
+	log.Printf("DEBUG: Rotating Key for Tenant: %s\n", tenantID)
 	err := h.Repo.RotateTenantAPIKey(tenantID, hashString, last4)
 	if err != nil {
-		http.Error(w, "Failed to rotate key", http.StatusInternalServerError)
+		log.Printf("ERROR: Failed to rotate key: %v\n", err)
+		http.Error(w, fmt.Sprintf("Failed to rotate key: %v", err), http.StatusInternalServerError)
 		return
 	}
 

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/aoricaan/idv-core/internal/domain"
@@ -31,6 +32,7 @@ func (r *Repository) GetTenantByAPIKeyHash(hash string) (*domain.Tenant, error) 
 }
 
 func (r *Repository) RotateTenantAPIKey(tenantID string, newHash string, last4 string) error {
+	log.Printf("REPO: Updating Tenant %s with hash len %d and last4 %s", tenantID, len(newHash), last4)
 	query := `UPDATE tenants SET api_key_hash = $1, api_key_last_4 = $2, updated_at = NOW() WHERE id = $3`
 	_, err := r.db.Exec(query, newHash, last4, tenantID)
 	return err
