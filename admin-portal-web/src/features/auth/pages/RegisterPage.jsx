@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../layouts/AuthLayout';
 import RegisterEmailStep from '../components/RegisterEmailStep';
 import RegisterDetailsStep from '../components/RegisterDetailsStep';
+import RegisterPasswordStep from '../components/RegisterPasswordStep';
 
 export default function RegisterPage() {
     const navigate = useNavigate();
@@ -13,13 +14,13 @@ export default function RegisterPage() {
         taxId: '',
         firstName: '',
         lastName: '',
-        phone: ''
+        phone: '',
+        password: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
+    const handleRegister = async () => {
         setLoading(true);
         setError('');
 
@@ -36,10 +37,19 @@ export default function RegisterPage() {
         }
     };
 
+    const getSubtitle = () => {
+        switch (step) {
+            case 1: return "Start your 30-day free trial";
+            case 2: return "Tell us a bit about yourself";
+            case 3: return "Secure your account";
+            default: return "";
+        }
+    }
+
     return (
         <AuthLayout
             title={step === 1 ? "Create an account" : "Complete registration"}
-            subtitle={step === 1 ? "Start your 30-day free trial" : "Tell us a bit about yourself"}
+            subtitle={getSubtitle()}
         >
             {error && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm">
@@ -47,18 +57,30 @@ export default function RegisterPage() {
                 </div>
             )}
 
-            {step === 1 ? (
+            {step === 1 && (
                 <RegisterEmailStep
                     email={formData.email}
                     setEmail={(val) => setFormData(prev => ({ ...prev, email: val }))}
                     onNext={() => setStep(2)}
                 />
-            ) : (
+            )}
+
+            {step === 2 && (
                 <RegisterDetailsStep
                     formData={formData}
                     setFormData={setFormData}
-                    onSubmit={handleRegister}
+                    onSubmit={(e) => { e.preventDefault(); setStep(3); }}
                     onBack={() => setStep(1)}
+                    loading={loading}
+                />
+            )}
+
+            {step === 3 && (
+                <RegisterPasswordStep
+                    password={formData.password}
+                    setPassword={(val) => setFormData(prev => ({ ...prev, password: val }))}
+                    onSubmit={handleRegister}
+                    onBack={() => setStep(2)}
                     loading={loading}
                 />
             )}
