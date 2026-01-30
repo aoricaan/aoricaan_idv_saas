@@ -1,82 +1,121 @@
-# Aoricaan IDV SaaS - Local Development Walkthrough
+# Aoricaan IDV SaaS Platform
 
-This guide details how to run the Identity Verification (IDV) SaaS platform locally using Docker.
+A unified Identity Verification (IDV) platform featuring a Core Engine, Secure User Flow, and Admin Portal.
 
-## Prerequisites
+## 🏗️ Architecture
+
+- **Core Engine (Backend)**: Go (Golang) REST API. Handles session logic, state machine, and storage.
+- **Secure Flow Web (Frontend)**: React + Vite. The interface for end-users to submit documents.
+- **Admin Portal (Frontend)**: React + Tailwind. Dashboard for tenants to manage keys, credits, and review verifications.
+- **Infrastructure**: Docker Compose (Postgres, Redis, MinIO).
+
+## 🚀 Prerequisites
+
 - Docker & Docker Compose
-- Make (optional, for convenience)
+- Git
 
-## 1. Quick Start (Run Everything)
+## 🛠️ Installation & First Run
 
-```bash
-cd infra-local
-make up
-# OR
-docker compose up -d --build
-```
+1. **Clone the repository**:
+   ```bash
+   git clone <repo-url>
+   cd aoricaan_idv_saas
+   ```
 
-This starts:
-- **Postgres** (DB): `localhost:5432`
-- **Redis** (Cache): `localhost:6379`
-- **MinIO** (S3): `localhost:9000` (Console: `localhost:9001`)
-- **Core Engine** (Backend): `localhost:8080`
-- **Secure Web** (Frontend): `localhost:3000`
+2. **Start the Platform**:
+   ```bash
+   cd infra-local
+   docker compose up -d --build
+   ```
+   *Wait a few moments for Postgres and MinIO to initialize.*
 
-## 2. End-to-End Demo (The "Happy Path")
+3. **Verify Services**:
+   - **Backend**: [http://localhost:8080/health](http://localhost:8080/health) -> `{"status":"ok"}`
+   - **Admin Portal**: [http://localhost:3001](http://localhost:3001)
+   - **Secure Flow**: [http://localhost:3000](http://localhost:3000)
+   - **MinIO Console**: [http://localhost:9001](http://localhost:9001) (User/Pass: `minioadmin` / `minioadmin`)
 
-To verify the full verification flow:
+---
 
-### Step 1: Create a Session (API)
-Simulate a client backend requesting a verification session.
+## 📖 Usage Guide (The "Happy Path")
+
+Follow these steps to complete a full verification cycle.
+
+### Step 1: Admin Setup
+1. Open the **Admin Portal** at [http://localhost:3001](http://localhost:3001).
+2. Login with the demo credentials:
+   - **Email**: `admin@democorp.com`
+   - **Password**: `adminpassword`
+3. In the Dashboard:
+   - **Rotate API Key**: Click "Rotate Key" to generate your first API Key. **Copy this key**.
+   - **Add Credits**: Ensure you have credits. Click "Simulate Usage" to test deduction, or use "Add Credits" to top up.
+
+### Step 2: Create a Verification Session (Backend API)
+Simulate your backend server creating a session for a user. Run this command in your terminal:
 
 **Windows (PowerShell):**
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8080/api/v1/sessions" -Method Post -Headers @{Authorization="secret-api-key"} -ContentType "application/json" -Body '{"flow_id": "onboarding_flow", "user_reference": "demo_user_01"}'
+$apiKey = "YOUR_COPIED_API_KEY_HERE"
+$body = @{
+    flow_id = "onboarding_flow"
+    user_reference = "john.doe@example.com"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/api/v1/sessions" `
+    -Method Post `
+    -Headers @{Authorization=$apiKey} `
+    -ContentType "application/json" `
+    -Body $body
 ```
 
 **Linux/Mac (cURL):**
 ```bash
 curl -X POST http://localhost:8080/api/v1/sessions \
-  -H "Authorization: secret-api-key" \
+  -H "Authorization: YOUR_COPIED_API_KEY_HERE" \
   -H "Content-Type: application/json" \
-  -d '{"flow_id": "onboarding_flow", "user_reference": "demo_user_01"}'
+  -d '{"flow_id": "onboarding_flow", "user_reference": "john.doe@example.com"}'
 ```
 
 **Response:**
-You will receive a JSON with a `redirect_url` containing a token.
-```json
-{
-    "redirect_url": "http://localhost:3000/start?token=YOUR_UUID_TOKEN",
-    "expires_in": 900
-}
-```
+You will receive a JSON response containing a `redirect_url` with a unique token.
 
-### Step 2: Complete the Flow (Frontend)
-1. **Open the Link**: Paste the `redirect_url` into your browser.
-2. **Welcome Screen**: You should see the first step: **"Document Capture (front)"**.
-3. **Capture**: Click **"Capture & Continue"**. ignoring the dummy camera.
-   - *Behind the scenes*: The frontend sends a POST to `/submit`, the backend advances the state.
-4. **Selfie Step**: The UI automatically updates to **"Selfie Verification"**.
-5. **Finish**: Click **"Take Selfie & Finish"**.
-6. **Completion**: The UI shows **"Verification Complete!"**.
+### Step 3: Complete Verification (User Flow)
+1. **Open the Link**: Copy the `redirect_url` (e.g., `http://localhost:3000/start?token=...`) into your browser.
+2. **Follow Instructions**:
+   - **Front ID**: Upload an image.
+   - **Selfie**: Upload an image.
+3. **Finish**: Click "Finish". The stats will change to **"Review Required"**.
 
-## 3. Useful Commands
+### Step 4: Admin Review
+1. Return to the **Admin Portal** ([http://localhost:3001](http://localhost:3001)).
+2. Go to the **"Verifications"** tab in the sidebar.
+3. You should see your session in the list (Status: `REVIEW_REQUIRED`).
+   - *Tip: Use the Search Bar to filter by User Reference.*
+4. Click on the session to view details.
+5. Review the uploaded images and click **Approve** or **Reject**.
+
+---
+
+
+## 🔧 Useful Commands
 
 | Action | Command (in `infra-local/`) |
 |---|---|
-| Start All | `make up` |
-| Stop All | `make down` |
-| Rebuild Backend | `docker compose up -d --build core-engine` |
-| Rebuild Frontend | `docker compose up -d --build secure-flow-web` |
-| Logs (Backend) | `docker logs -f idv_core` |
-| DB Shell | `docker exec -it idv_postgres psql -U user -d idv_core` |
+| **Start All** | `docker compose up -d` |
+| **Stop All** | `docker compose down` |
+| **Rebuild Backend** | `docker compose up -d --build core-engine` |
+| **Rebuild Frontend** | `docker compose up -d --build secure-flow-web` |
+| **Logs** | `docker compose logs -f` |
 
-## 4. Current State (MVP Phase 3)
-- **Database**: Seeded with Tenant 'DemoCorp' and Flow 'onboarding_flow'.
-- **Backend**: Handles Session Creation, State Management, and Step Navigation.
-- **Frontend**: Renders dynamic steps (`DocumentCapture`, `SelfieCapture`) based on Backend state.
+## ❓ Troubleshooting
 
-**Next Steps**:
-- Real image upload to MinIO.
-- Real camera integration in Frontend.
-- Admin Dashboard to view results.
+### Persistent 500 Errors / DB Schema Issues
+If you encounter 500 errors (e.g., during API Key rotation) or missing database columns:
+**Fix:**
+```bash
+cd infra-local
+docker compose down -v  # Wipes volumes (data) to force schema application
+docker compose up -d --build
+```
+*Warning: This will delete all local data.*
+

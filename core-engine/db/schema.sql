@@ -6,10 +6,21 @@ CREATE TABLE IF NOT EXISTS tenants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     api_key_hash VARCHAR(64) NOT NULL, -- SHA256 of the API Key
+    api_key_last_4 VARCHAR(4),
     webhook_url TEXT,
     branding_config JSONB DEFAULT '{}',
+    credits_balance INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Table: credit_transactions
+CREATE TABLE IF NOT EXISTS credit_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    amount INT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Table: flows
@@ -24,7 +35,7 @@ CREATE TABLE IF NOT EXISTS flows (
 );
 
 -- Enum for Session Status
-CREATE TYPE session_status AS ENUM ('PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED', 'EXPIRED');
+CREATE TYPE session_status AS ENUM ('PENDING', 'IN_PROGRESS', 'REVIEW_REQUIRED', 'APPROVED', 'REJECTED', 'EXPIRED');
 
 -- Table: sessions
 CREATE TABLE IF NOT EXISTS sessions (
