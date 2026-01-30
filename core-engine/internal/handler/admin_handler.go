@@ -72,6 +72,102 @@ func (h *AdminHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(LoginResponse{Token: tokenString})
 }
 
+type RegisterRequest struct {
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	CompanyName string `json:"company_name"`
+	TaxID       string `json:"tax_id"`
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+}
+
+func (h *AdminHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Basic Validation
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	// 1. Check if user exists
+	_, err := h.Repo.GetTenantUserByEmail(req.Email)
+	if err == nil {
+		http.Error(w, "User already exists", http.StatusConflict)
+		return
+	}
+
+	// 2. Hash Password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Failed to process password", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Generate API Key
+	apiKey := uuid.New().String()
+	hash := sha256.Sum256([]byte(apiKey))
+	hashString := hex.EncodeToString(hash[:])
+	last4 := apiKey[len(apiKey)-4:]
+
+	// 4. Prepare Tenant Data
+	tenantID := uuid.New()
+	tenantName := req.CompanyName
+	if tenantName == "" {
+		tenantName = fmt.Sprintf("%s %s", req.FirstName, req.LastName)
+	}
+
+	tenant := &domain.Tenant{
+		ID:             tenantID,
+		Name:           tenantName,
+		APIKeyHash:     hashString,
+		APIKeyLast4:    last4,
+		WebhookURL:     "",
+		BrandingConfig: domain.JSONB{"primary_color": "#4F46E5"},
+		CreditsBalance: 10,
+	}
+
+	// 5. Prepare User Data
+	userID := uuid.New()
+	user := &domain.TenantUser{
+		ID:           userID,
+		TenantID:     tenantID,
+		Email:        req.Email,
+		PasswordHash: string(hashedPassword),
+		Role:         "ADMIN",
+	}
+
+	// 6. DB Transaction
+	err = h.Repo.RegisterTenant(tenant, user)
+	if err != nil {
+		log.Printf("ERROR: Register failed: %v", err)
+		http.Error(w, "Registration failed", http.StatusInternalServerError)
+		return
+	}
+
+	// 7. Auto-Login (Generate Token)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":       user.ID,
+		"tenant_id": user.TenantID,
+		"role":      user.Role,
+		"exp":       time.Now().Add(24 * time.Hour).Unix(),
+	})
+
+	tokenString, err := token.SignedString(config.GetJWTSecret())
+	if err != nil {
+		w.WriteHeader(http.StatusCreated)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(LoginResponse{Token: tokenString})
+}
+
 type RotateKeyResponse struct {
 	NewAPIKey string `json:"new_api_key"`
 }
