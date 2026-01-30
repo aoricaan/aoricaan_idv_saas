@@ -227,3 +227,32 @@ func (r *Repository) UpdateSessionStatus(token string, status domain.SessionStat
 	_, err := r.db.Exec(query, status, token)
 	return err
 }
+func (r *Repository) RegisterTenant(t *domain.Tenant, u *domain.TenantUser) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Insert Tenant
+	queryTenant := `
+		INSERT INTO tenants (id, name, api_key_hash, api_key_last_4, webhook_url, branding_config, credits_balance, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+	`
+	_, err = tx.Exec(queryTenant, t.ID, t.Name, t.APIKeyHash, t.APIKeyLast4, t.WebhookURL, t.BrandingConfig, t.CreditsBalance)
+	if err != nil {
+		return fmt.Errorf("failed to insert tenant: %w", err)
+	}
+
+	// 2. Insert User
+	queryUser := `
+		INSERT INTO tenant_users (id, tenant_id, email, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+	`
+	_, err = tx.Exec(queryUser, u.ID, u.TenantID, u.Email, u.PasswordHash, u.Role)
+	if err != nil {
+		return fmt.Errorf("failed to insert user: %w", err)
+	}
+
+	return tx.Commit()
+}

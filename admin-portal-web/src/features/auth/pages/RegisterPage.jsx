@@ -25,13 +25,32 @@ export default function RegisterPage() {
         setError('');
 
         try {
-            console.log('Registering with:', formData);
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // Navigate to login after successful registration (or auto-login)
+            const res = await fetch('http://localhost:8080/admin/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            if (!res.ok) {
+                const text = await res.text().catch(() => 'Registration failed');
+                throw new Error(text || 'Registration failed');
+            }
+
+            // Success - if backend returns token, we can auto-login, otherwise sent to login
+            // For now, let's navigate to login to force them to try credentials as requested by user verification flow
+            // Actually user requested "intentar hacer login" failing, so if we auto-login it solves it, 
+            // but to be safe and verify credentials work, we can redirect or just log them in.
+            // The user said "realice el registro... y todo fue exitoso", implies they saw success.
+            // Let's keep it simple: redirect to Login so they see "Success" then login. 
+            // OR auto-login. The backend code I wrote returns a token. 
+            // Let's use the token? No, user explicitly said "al intentar hacer login". 
+            // So they want to explicitly login. I'll ignore the token for now or use it. 
+            // I'll stick to navigating to login to be safe.
+            alert("Registration successful! Please login.");
             navigate('/login');
+
         } catch (err) {
-            setError('Registration failed. Please try again.');
+            setError(err.message);
         } finally {
             setLoading(false);
         }
