@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import VerificationList from './components/VerificationList';
 import VerificationDetail from './components/VerificationDetail';
+import FlowList from './features/flows/FlowList';
+import FlowEditor from './features/flows/FlowEditor';
 
 export default function Dashboard({ token, onLogout }) {
     const [newKey, setNewKey] = useState(null);
@@ -96,8 +98,9 @@ export default function Dashboard({ token, onLogout }) {
 
 
 
-    const [view, setView] = useState('overview'); // 'overview', 'verifications', 'verification_detail'
+    const [view, setView] = useState('overview'); // 'overview', 'verifications', 'verification_detail', 'flows', 'flow_editor'
     const [selectedSessionToken, setSelectedSessionToken] = useState(null);
+    const [selectedFlow, setSelectedFlow] = useState(null);
 
     const renderContent = () => {
         switch (view) {
@@ -105,6 +108,19 @@ export default function Dashboard({ token, onLogout }) {
                 return <VerificationList token={token} onSelectSession={handleSelectSession} />;
             case 'verification_detail':
                 return <VerificationDetail token={token} sessionToken={selectedSessionToken} onBack={() => setView('verifications')} />;
+            case 'flows':
+                return <FlowList
+                    token={token}
+                    onCreateFlow={() => { setSelectedFlow(null); setView('flow_editor'); }}
+                    onEditFlow={(flow) => { setSelectedFlow(flow); setView('flow_editor'); }}
+                />;
+            case 'flow_editor':
+                return <FlowEditor
+                    token={token}
+                    flow={selectedFlow}
+                    onSave={() => setView('flows')}
+                    onCancel={() => setView('flows')}
+                />;
             default:
                 return (
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -224,6 +240,12 @@ export default function Dashboard({ token, onLogout }) {
                                     className={`px-3 py-2 rounded-md text-sm font-medium ${view.startsWith('verification') ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
                                     Verifications
+                                </button>
+                                <button
+                                    onClick={() => setView('flows')}
+                                    className={`px-3 py-2 rounded-md text-sm font-medium ${view.startsWith('flow') ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Flows
                                 </button>
                             </div>
                         </div>
