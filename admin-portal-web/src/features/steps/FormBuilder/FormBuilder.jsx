@@ -19,20 +19,13 @@ import PropertiesPanel from './PropertiesPanel';
 // Generate a random ID
 const generateId = (prefix = 'field') => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
 
-export default function FormBuilder({ initialConfig, onConfigChange }) {
-    const [fields, setFields] = useState(initialConfig?.fields || []);
-    const [actions, setActions] = useState(initialConfig?.actions || [{ type: 'submit', label: 'Continue', conditions: [] }]);
+export default function FormBuilder({ config, onConfigChange }) {
+    const fields = config?.fields || [];
+    const actions = config?.actions || [{ type: 'submit', label: 'Continue', conditions: [] }];
+
     const [selectedFieldId, setSelectedFieldId] = useState(null);
     const [activeDragItem, setActiveDragItem] = useState(null); // For DragOverlay
     const [editingActions, setEditingActions] = useState(false);
-
-    // Sync state when initialConfig changes (e.g. loading a different template)
-    React.useEffect(() => {
-        if (initialConfig) {
-            setFields(initialConfig.fields || []);
-            setActions(initialConfig.actions || [{ type: 'submit', label: 'Continue', conditions: [] }]);
-        }
-    }, [initialConfig]);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -82,7 +75,6 @@ export default function FormBuilder({ initialConfig, onConfigChange }) {
             };
 
             const newFields = [...fields, newField];
-            setFields(newFields);
             updateConfig(newFields, actions);
             setSelectedFieldId(newField.id); // Auto-select new item
             return;
@@ -94,7 +86,6 @@ export default function FormBuilder({ initialConfig, onConfigChange }) {
             const newIndex = fields.findIndex((f) => f.id === over.id);
 
             const newFields = arrayMove(fields, oldIndex, newIndex);
-            setFields(newFields);
             updateConfig(newFields, actions);
         }
     };
@@ -106,7 +97,6 @@ export default function FormBuilder({ initialConfig, onConfigChange }) {
 
     const handleDeleteField = (id) => {
         const newFields = fields.filter(f => f.id !== id);
-        setFields(newFields);
         updateConfig(newFields, actions);
         if (selectedFieldId === id) setSelectedFieldId(null);
     };
@@ -117,8 +107,12 @@ export default function FormBuilder({ initialConfig, onConfigChange }) {
             return;
         }
 
+        // If ID changed, we need to update selectedFieldId too to keep selection
+        if (updatedField.id !== selectedFieldId) {
+            setSelectedFieldId(updatedField.id);
+        }
+
         const newFields = fields.map(f => f.id === selectedFieldId ? updatedField : f);
-        setFields(newFields);
         updateConfig(newFields, actions);
     };
 
@@ -131,7 +125,6 @@ export default function FormBuilder({ initialConfig, onConfigChange }) {
             setEditingActions(false);
         } else {
             // val is new actions array
-            setActions(val);
             updateConfig(fields, val);
         }
     };

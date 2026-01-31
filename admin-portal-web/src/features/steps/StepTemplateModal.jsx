@@ -102,7 +102,7 @@ export default function StepTemplateModal({ isOpen, onClose, onSave, template })
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">Form Builder</label>
                             <FormBuilder
-                                initialConfig={parsedConfig}
+                                config={parsedConfig}
                                 onConfigChange={handleFormBuilderChange}
                             />
                             <div className="mt-2 text-xs text-gray-400">
