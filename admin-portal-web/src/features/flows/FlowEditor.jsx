@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
+import FlowBuilder from './FlowBuilder';
 
 export default function FlowEditor({ token, flow, onSave, onCancel }) {
     const [name, setName] = useState(flow ? flow.name : '');
     const [description, setDescription] = useState(flow ? flow.description : '');
-    const [stepsConfig, setStepsConfig] = useState(
-        flow ? JSON.stringify(flow.steps_configuration, null, 2) : '[]'
-    );
+    const [stepsConfig, setStepsConfig] = useState(flow ? flow.steps_configuration : []);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -15,27 +14,19 @@ export default function FlowEditor({ token, flow, onSave, onCancel }) {
         setError(null);
 
         try {
-            let parsedConfig;
-            try {
-                parsedConfig = JSON.parse(stepsConfig);
-            } catch (err) {
-                throw new Error("Invalid JSON in Steps Configuration");
-            }
-
             const payload = {
                 name,
                 description,
-                steps_configuration: parsedConfig
+                steps_configuration: stepsConfig
             };
 
             const url = flow
                 ? `http://localhost:8080/admin/flows/update?id=${flow.id}`
                 : 'http://localhost:8080/admin/flows';
 
-            const method = flow ? 'POST' : 'POST'; // Update uses POST as per existing handlers logic if simplified, but main.go supports PUT. AdminHandler supports Update via POST on /update.
-
+            // Using POST for both create and update as per backend implementation
             const res = await fetch(url, {
-                method: method,
+                method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -85,13 +76,10 @@ export default function FlowEditor({ token, flow, onSave, onCancel }) {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Steps Configuration (JSON)</label>
-                    <p className="text-xs text-gray-500 mb-2">Define steps as an array of objects.</p>
-                    <textarea
-                        value={stepsConfig}
-                        onChange={(e) => setStepsConfig(e.target.value)}
-                        rows={10}
-                        className="mt-1 block w-full font-mono text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-2"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Flow Builder</label>
+                    <FlowBuilder
+                        initialConfig={stepsConfig}
+                        onConfigChange={setStepsConfig}
                     />
                 </div>
 
