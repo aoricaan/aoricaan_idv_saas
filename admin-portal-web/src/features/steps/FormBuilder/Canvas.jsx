@@ -45,7 +45,11 @@ export default function Canvas({ fields, selectedFieldId, onSelectField, onDelet
 
                 {/* Visual Footer/Action Area */}
                 <div className="mt-8 pt-4 border-t border-gray-100">
-                    <button className="w-full bg-indigo-600 text-white rounded-md py-2 text-sm font-medium opacity-50 cursor-not-allowed">
+                    <button
+                        type="button"
+                        onClick={(e) => e.preventDefault()}
+                        className="w-full bg-indigo-600 text-white rounded-md py-2 text-sm font-medium opacity-50 cursor-not-allowed"
+                    >
                         Continue (Configured in Properties)
                     </button>
                 </div>
