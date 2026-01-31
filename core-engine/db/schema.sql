@@ -63,3 +63,25 @@ CREATE TABLE IF NOT EXISTS tenant_users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Table: step_templates
+CREATE TABLE IF NOT EXISTS step_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    strategy VARCHAR(50) NOT NULL, -- UI_STEP or CODE_STEP
+    base_config JSONB DEFAULT '{}',
+    is_system BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Seed System Templates
+INSERT INTO step_templates (slug, name, description, strategy, base_config, is_system)
+VALUES 
+    ('document_scan', 'Document Scan', 'Scan ID document using device camera', 'UI_STEP', '{}', TRUE),
+    ('selfie_capture', 'Selfie Capture', 'Capture user selfie for liveness check', 'UI_STEP', '{}', TRUE),
+    ('face_match', 'Face Match', 'Compare ID photo with Selfie', 'CODE_STEP', '{"endpoint": "/internal/face-match"}', TRUE),
+    ('instructions', 'Instructions', 'Display instructions to the user', 'UI_STEP', '{}', TRUE)
+ON CONFLICT (slug) DO NOTHING;

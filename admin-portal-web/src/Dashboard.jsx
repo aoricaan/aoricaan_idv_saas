@@ -3,8 +3,12 @@ import VerificationList from './components/VerificationList';
 import VerificationDetail from './components/VerificationDetail';
 import FlowList from './features/flows/FlowList';
 import FlowEditor from './features/flows/FlowEditor';
+import StepsPage from './features/steps/StepsPage';
 
 export default function Dashboard({ token, onLogout }) {
+    const [view, setView] = useState('overview'); // 'overview', 'verifications', 'verification_detail', 'flows', 'flow_editor', 'steps'
+    const [selectedSessionToken, setSelectedSessionToken] = useState(null);
+    const [selectedFlow, setSelectedFlow] = useState(null);
     const [newKey, setNewKey] = useState(null);
     const [loading, setLoading] = useState(false);
     const [keyStatus, setKeyStatus] = useState(null);
@@ -79,7 +83,6 @@ export default function Dashboard({ token, onLogout }) {
     const buyCredits = async (amount) => {
         setLoading(true);
         try {
-            // Using existing endpoint to simulate purchase
             const res = await fetch('http://localhost:8080/admin/credits/add', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -96,11 +99,10 @@ export default function Dashboard({ token, onLogout }) {
         }
     };
 
-
-
-    const [view, setView] = useState('overview'); // 'overview', 'verifications', 'verification_detail', 'flows', 'flow_editor'
-    const [selectedSessionToken, setSelectedSessionToken] = useState(null);
-    const [selectedFlow, setSelectedFlow] = useState(null);
+    const handleSelectSession = (sessionToken) => {
+        setSelectedSessionToken(sessionToken);
+        setView('verification_detail');
+    };
 
     const renderContent = () => {
         switch (view) {
@@ -121,6 +123,8 @@ export default function Dashboard({ token, onLogout }) {
                     onSave={() => setView('flows')}
                     onCancel={() => setView('flows')}
                 />;
+            case 'steps':
+                return <StepsPage />;
             default:
                 return (
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -214,11 +218,6 @@ export default function Dashboard({ token, onLogout }) {
         }
     };
 
-    const handleSelectSession = (token) => {
-        setSelectedSessionToken(token);
-        setView('verification_detail');
-    };
-
     return (
         <div className="min-h-screen bg-gray-50">
             <nav className="bg-white shadow">
@@ -246,6 +245,12 @@ export default function Dashboard({ token, onLogout }) {
                                     className={`px-3 py-2 rounded-md text-sm font-medium ${view.startsWith('flow') ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                                 >
                                     Flows
+                                </button>
+                                <button
+                                    onClick={() => setView('steps')}
+                                    className={`px-3 py-2 rounded-md text-sm font-medium ${view === 'steps' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    Steps
                                 </button>
                             </div>
                         </div>
@@ -310,4 +315,3 @@ export default function Dashboard({ token, onLogout }) {
         </div>
     );
 }
-

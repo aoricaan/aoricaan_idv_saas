@@ -36,6 +36,7 @@ func main() {
 
 	sessionHandler := &handler.SessionHandler{Repo: repo, Storage: storageService}
 	adminHandler := &handler.AdminHandler{Repo: repo, Storage: storageService}
+	templateHandler := handler.NewTemplateHandler(repo)
 
 	// 2. Routes
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -223,6 +224,40 @@ func main() {
 			adminHandler.DeleteFlow(w, r)
 			return
 		}
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}))
+
+	// Step Template Routes
+	http.HandleFunc("/admin/step-templates", handler.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
+		if r.Method == http.MethodGet {
+			templateHandler.ListTemplates(w, r)
+			return
+		}
+		if r.Method == http.MethodPost {
+			templateHandler.CreateTemplate(w, r)
+			return
+		}
+
+		// For PUT/DELETE usually we use ID in path or query
+		// Here relying on query param ?id=... handled in handler
+		if r.Method == http.MethodPut {
+			templateHandler.UpdateTemplate(w, r)
+			return
+		}
+		if r.Method == http.MethodDelete {
+			templateHandler.DeleteTemplate(w, r)
+			return
+		}
+
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}))
 

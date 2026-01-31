@@ -12,9 +12,14 @@ import (
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// CORS Headers for EVERY request
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
 		// Allow CORS Preflight (OPTIONS) without Auth
 		if r.Method == http.MethodOptions {
-			next(w, r)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 
