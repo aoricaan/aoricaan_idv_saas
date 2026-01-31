@@ -70,8 +70,8 @@ func (r *Repository) GetFlowByName(tenantID string, flowName string) (*domain.Fl
 
 func (r *Repository) GetFlowByID(flowID string) (*domain.Flow, error) {
 	var f domain.Flow
-	query := `SELECT id, name, steps_configuration FROM flows WHERE id = $1`
-	err := r.db.QueryRow(query, flowID).Scan(&f.ID, &f.Name, &f.StepsConfiguration)
+	query := `SELECT id, tenant_id, name, steps_configuration FROM flows WHERE id = $1`
+	err := r.db.QueryRow(query, flowID).Scan(&f.ID, &f.TenantID, &f.Name, &f.StepsConfiguration)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("flow not found")
 	}
@@ -79,6 +79,65 @@ func (r *Repository) GetFlowByID(flowID string) (*domain.Flow, error) {
 		return nil, err
 	}
 	return &f, nil
+}
+
+func (r *Repository) CreateFlow(f *domain.Flow) error {
+	query := `
+		INSERT INTO flows (id, tenant_id, name, description, steps_configuration, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`
+	_, err := r.db.Exec(query, f.ID, f.TenantID, f.Name, f.Description, f.StepsConfiguration, f.CreatedAt, f.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to create flow: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) UpdateFlow(f *domain.Flow) error {
+	query := `
+		UPDATE flows 
+		SET name = $1, description = $2, steps_configuration = $3, updated_at = $4
+		WHERE id = $5
+	`
+	_, err := r.db.Exec(query, f.Name, f.Description, f.StepsConfiguration, f.UpdatedAt, f.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update flow: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) DeleteFlow(id string) error {
+	// Manual Cascade: Delete associated sessions first
+	_, err := r.db.Exec(`DELETE FROM sessions WHERE flow_id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete associated sessions: %w", err)
+	}
+
+	query := `DELETE FROM flows WHERE id = $1`
+	_, err = r.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete flow: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) ListFlows(tenantID string) ([]domain.Flow, error) {
+	query := `SELECT id, tenant_id, name, description, steps_configuration, created_at, updated_at FROM flows WHERE tenant_id = $1 ORDER BY created_at DESC`
+	rows, err := r.db.Query(query, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var flows []domain.Flow
+	for rows.Next() {
+		var f domain.Flow
+		if err := rows.Scan(&f.ID, &f.TenantID, &f.Name, &f.Description, &f.StepsConfiguration, &f.CreatedAt, &f.UpdatedAt); err != nil {
+			return nil, err
+		}
+		flows = append(flows, f)
+	}
+	return flows, nil
 }
 
 func (r *Repository) CreateSession(s *domain.Session) error {

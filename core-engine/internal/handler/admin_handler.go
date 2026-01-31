@@ -405,3 +405,180 @@ func (h *AdminHandler) DecideSession(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+// ----------------------------------------
+// Flow Management Endpoints
+// ----------------------------------------
+
+func (h *AdminHandler) ListFlows(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := r.Context().Value("tenant_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	flows, err := h.Repo.ListFlows(tenantID)
+	if err != nil {
+		log.Printf("ERROR: Failed to list flows: %v", err)
+		http.Error(w, "Failed to list flows", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(flows)
+}
+
+func (h *AdminHandler) GetFlow(w http.ResponseWriter, r *http.Request) {
+	flowID := r.URL.Query().Get("id")
+	if flowID == "" {
+		http.Error(w, "Missing flow ID", http.StatusBadRequest)
+		return
+	}
+
+	flow, err := h.Repo.GetFlowByID(flowID)
+	if err != nil {
+		http.Error(w, "Flow not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify Tenant Access
+	tenantID, _ := r.Context().Value("tenant_id").(string)
+	if flow.TenantID.String() != tenantID {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(flow)
+}
+
+type CreateFlowRequest struct {
+	Name               string             `json:"name"`
+	Description        string             `json:"description"`
+	StepsConfiguration domain.StepsConfig `json:"steps_configuration"`
+}
+
+func (h *AdminHandler) CreateFlow(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := r.Context().Value("tenant_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req CreateFlowRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+
+	tID, err := uuid.Parse(tenantID)
+	if err != nil {
+		http.Error(w, "Invalid Tenant ID", http.StatusInternalServerError)
+		return
+	}
+
+	flow := &domain.Flow{
+		ID:                 uuid.New(),
+		TenantID:           tID,
+		Name:               req.Name,
+		Description:        req.Description,
+		StepsConfiguration: req.StepsConfiguration,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+	}
+
+	if err := h.Repo.CreateFlow(flow); err != nil {
+		log.Printf("ERROR: Failed to create flow: %v", err)
+		http.Error(w, "Failed to create flow", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(flow)
+}
+
+func (h *AdminHandler) UpdateFlow(w http.ResponseWriter, r *http.Request) {
+	flowIDStr := r.URL.Query().Get("id")
+	if flowIDStr == "" {
+		http.Error(w, "Missing flow ID", http.StatusBadRequest)
+		return
+	}
+
+	tenantID, ok := r.Context().Value("tenant_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check existence and ownership
+	existingFlow, err := h.Repo.GetFlowByID(flowIDStr)
+	if err != nil {
+		http.Error(w, "Flow not found", http.StatusNotFound)
+		return
+	}
+
+	if existingFlow.TenantID.String() != tenantID {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req CreateFlowRequest // Reusing struct
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	existingFlow.Name = req.Name
+	existingFlow.Description = req.Description
+	existingFlow.StepsConfiguration = req.StepsConfiguration
+	existingFlow.UpdatedAt = time.Now()
+
+	if err := h.Repo.UpdateFlow(existingFlow); err != nil {
+		log.Printf("ERROR: Failed to update flow: %v", err)
+		http.Error(w, "Failed to update flow", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(existingFlow)
+}
+
+func (h *AdminHandler) DeleteFlow(w http.ResponseWriter, r *http.Request) {
+	flowIDStr := r.URL.Query().Get("id")
+	if flowIDStr == "" {
+		http.Error(w, "Missing flow ID", http.StatusBadRequest)
+		return
+	}
+
+	tenantID, ok := r.Context().Value("tenant_id").(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Check existence and ownership
+	existingFlow, err := h.Repo.GetFlowByID(flowIDStr)
+	if err != nil {
+		http.Error(w, "Flow not found", http.StatusNotFound)
+		return
+	}
+
+	if existingFlow.TenantID.String() != tenantID {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.Repo.DeleteFlow(flowIDStr); err != nil {
+		log.Printf("ERROR: Failed to delete flow: %v", err)
+		http.Error(w, "Failed to delete flow", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
