@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS tenants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    api_key_hash VARCHAR(64) NOT NULL, -- SHA256 of the API Key
+    api_key_hash VARCHAR(64), -- SHA256 of the API Key (Nullable for delayed generation)
     api_key_last_4 VARCHAR(4),
     webhook_url TEXT,
     branding_config JSONB DEFAULT '{}',

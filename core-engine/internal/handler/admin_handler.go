@@ -108,13 +108,7 @@ func (h *AdminHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Generate API Key
-	apiKey := uuid.New().String()
-	hash := sha256.Sum256([]byte(apiKey))
-	hashString := hex.EncodeToString(hash[:])
-	last4 := apiKey[len(apiKey)-4:]
-
-	// 4. Prepare Tenant Data
+	// 3. Prepare Tenant Data (API Key generated later on demand)
 	tenantID := uuid.New()
 	tenantName := req.CompanyName
 	if tenantName == "" {
@@ -124,8 +118,8 @@ func (h *AdminHandler) Register(w http.ResponseWriter, r *http.Request) {
 	tenant := &domain.Tenant{
 		ID:             tenantID,
 		Name:           tenantName,
-		APIKeyHash:     hashString,
-		APIKeyLast4:    last4,
+		APIKeyHash:     "", // Empty until generated
+		APIKeyLast4:    "", // Empty until generated
 		WebhookURL:     "",
 		BrandingConfig: domain.JSONB{"primary_color": "#4F46E5"},
 		CreditsBalance: 10,
@@ -223,13 +217,18 @@ func (h *AdminHandler) GetAPIKeyStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Return Status
+	status := "Active"
 	mask := "********************"
-	if tenant.APIKeyLast4 != "" {
+
+	if tenant.APIKeyLast4 == "" {
+		status = "Inactive"
+		mask = "Not Generated"
+	} else {
 		mask = "****************" + tenant.APIKeyLast4
 	}
 
 	response := APIKeyStatusResponse{
-		Status: "Active",
+		Status: status,
 		Mask:   mask,
 	}
 
