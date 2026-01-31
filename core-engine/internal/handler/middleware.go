@@ -10,6 +10,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const TenantIDKey = "tenant_id"
+
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// CORS Headers for EVERY request
@@ -54,7 +56,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			}
 
 			// Inject TenantID into Context
-			ctx := context.WithValue(r.Context(), "tenant_id", tenantID)
+			ctx := context.WithValue(r.Context(), TenantIDKey, tenantID)
 			next(w, r.WithContext(ctx))
 		} else {
 			http.Error(w, "Invalid Token Claims", http.StatusUnauthorized)

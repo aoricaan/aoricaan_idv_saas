@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS tenant_users (
 -- Table: step_templates
 CREATE TABLE IF NOT EXISTS step_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     slug VARCHAR(100) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
     description TEXT,

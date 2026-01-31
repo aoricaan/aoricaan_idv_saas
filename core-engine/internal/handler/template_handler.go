@@ -18,7 +18,13 @@ func NewTemplateHandler(repo *infra.Repository) *TemplateHandler {
 }
 
 func (h *TemplateHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
-	templates, err := h.Repo.ListStepTemplates()
+	tenantID, ok := r.Context().Value(TenantIDKey).(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	templates, err := h.Repo.ListStepTemplates(tenantID)
 	if err != nil {
 		http.Error(w, "Failed to fetch templates", http.StatusInternalServerError)
 		return
@@ -29,13 +35,26 @@ func (h *TemplateHandler) ListTemplates(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *TemplateHandler) CreateTemplate(w http.ResponseWriter, r *http.Request) {
+	tenantIDStr, ok := r.Context().Value(TenantIDKey).(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var req domain.StepTemplate
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
+	tenantUUID, err := uuid.Parse(tenantIDStr)
+	if err != nil {
+		http.Error(w, "Invalid Tenant ID", http.StatusInternalServerError)
+		return
+	}
+
 	req.ID = uuid.New() // Ensure new ID
+	req.TenantID = &tenantUUID
 	// Default to non-system for user created templates
 	req.IsSystem = false
 	// Basic Slug generation if empty
@@ -53,13 +72,19 @@ func (h *TemplateHandler) CreateTemplate(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *TemplateHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := r.Context().Value(TenantIDKey).(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		http.Error(w, "Missing ID", http.StatusBadRequest)
 		return
 	}
 
-	existing, err := h.Repo.GetStepTemplateByID(id)
+	existing, err := h.Repo.GetStepTemplateByID(id, tenantID)
 	if err != nil {
 		http.Error(w, "Template not found", http.StatusNotFound)
 		return
@@ -91,13 +116,19 @@ func (h *TemplateHandler) UpdateTemplate(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *TemplateHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request) {
+	tenantID, ok := r.Context().Value(TenantIDKey).(string)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	id := r.URL.Query().Get("id")
 	if id == "" {
 		http.Error(w, "Missing ID", http.StatusBadRequest)
 		return
 	}
 
-	existing, err := h.Repo.GetStepTemplateByID(id)
+	existing, err := h.Repo.GetStepTemplateByID(id, tenantID)
 	if err != nil {
 		http.Error(w, "Template not found", http.StatusNotFound)
 		return
@@ -108,7 +139,7 @@ func (h *TemplateHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := h.Repo.DeleteStepTemplate(id); err != nil {
+	if err := h.Repo.DeleteStepTemplate(id, tenantID); err != nil {
 		http.Error(w, "Failed to delete template", http.StatusInternalServerError)
 		return
 	}

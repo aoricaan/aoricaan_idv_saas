@@ -63,6 +63,7 @@ const (
 
 type StepTemplate struct {
 	ID          uuid.UUID    `json:"id"`
+	TenantID    *uuid.UUID   `json:"tenant_id,omitempty"`
 	Slug        string       `json:"slug"`
 	Name        string       `json:"name"`
 	Description string       `json:"description"`
