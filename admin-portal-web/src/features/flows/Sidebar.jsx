@@ -1,10 +1,42 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 export default function Sidebar() {
-    const onDragStart = (event, nodeType, label) => {
+    const [templates, setTemplates] = useState([]);
+
+    useEffect(() => {
+        const fetchTemplates = async () => {
+            try {
+                const token = localStorage.getItem('admin_token');
+                if (!token) return;
+
+                const response = await fetch('http://localhost:8080/admin/step-templates', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setTemplates(data || []);
+                }
+            } catch (error) {
+                console.error("Failed to load step templates", error);
+            }
+        };
+
+        fetchTemplates();
+    }, []);
+
+    const onDragStart = (event, nodeType, label, template) => {
         event.dataTransfer.setData('application/reactflow', nodeType);
         event.dataTransfer.setData('application/label', label);
+        event.dataTransfer.setData('application/template', JSON.stringify(template));
         event.dataTransfer.effectAllowed = 'move';
+    };
+
+    const getColors = (strategy) => {
+        if (strategy === 'UI_STEP') return { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-900', sub: 'text-indigo-700' };
+        return { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-900', sub: 'text-green-700' };
     };
 
     return (
@@ -12,41 +44,21 @@ export default function Sidebar() {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Available Steps</h3>
 
             <div className="space-y-3">
-                <div
-                    className="p-3 bg-indigo-50 border border-indigo-200 rounded cursor-move hover:bg-indigo-100 transition-colors"
-                    onDragStart={(event) => onDragStart(event, 'stepNode', 'Document Scan')}
-                    draggable
-                >
-                    <div className="text-sm font-medium text-indigo-900">Document Scan</div>
-                    <div className="text-xs text-indigo-700">Scan ID document</div>
-                </div>
-
-                <div
-                    className="p-3 bg-blue-50 border border-blue-200 rounded cursor-move hover:bg-blue-100 transition-colors"
-                    onDragStart={(event) => onDragStart(event, 'stepNode', 'Selfie Capture')}
-                    draggable
-                >
-                    <div className="text-sm font-medium text-blue-900">Selfie Capture</div>
-                    <div className="text-xs text-blue-700">Capture user selfie</div>
-                </div>
-
-                <div
-                    className="p-3 bg-green-50 border border-green-200 rounded cursor-move hover:bg-green-100 transition-colors"
-                    onDragStart={(event) => onDragStart(event, 'stepNode', 'Face Match')}
-                    draggable
-                >
-                    <div className="text-sm font-medium text-green-900">Face Match</div>
-                    <div className="text-xs text-green-700">Compare ID with Selfie</div>
-                </div>
-
-                <div
-                    className="p-3 bg-gray-50 border border-gray-200 rounded cursor-move hover:bg-gray-100 transition-colors"
-                    onDragStart={(event) => onDragStart(event, 'stepNode', 'Instructions')}
-                    draggable
-                >
-                    <div className="text-sm font-medium text-gray-900">Instructions</div>
-                    <div className="text-xs text-gray-700">Show text to user</div>
-                </div>
+                {templates.map(t => {
+                    const colors = getColors(t.strategy);
+                    return (
+                        <div
+                            key={t.id}
+                            className={`p-3 ${colors.bg} border ${colors.border} rounded cursor-move hover:opacity-80 transition-opacity`}
+                            onDragStart={(event) => onDragStart(event, 'stepNode', t.name, t)}
+                            draggable
+                        >
+                            <div className={`text-sm font-medium ${colors.text}`}>{t.name}</div>
+                            <div className={`text-xs ${colors.sub}`}>{t.description}</div>
+                            <div className="text-[10px] uppercase mt-1 text-gray-500">{t.strategy.replace('_', ' ')}</div>
+                        </div>
+                    )
+                })}
             </div>
 
             <div className="mt-auto text-xs text-gray-400">

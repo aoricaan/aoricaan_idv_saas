@@ -106,6 +106,54 @@ func (r *Repository) UpdateFlow(f *domain.Flow) error {
 	return nil
 }
 
+func (r *Repository) ListStepTemplates(tenantID string) ([]domain.StepTemplate, error) {
+	query := `SELECT id, tenant_id, slug, name, description, strategy, base_config, is_system FROM step_templates WHERE tenant_id = $1 OR is_system = TRUE`
+	rows, err := r.db.Query(query, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var templates []domain.StepTemplate
+	for rows.Next() {
+		var t domain.StepTemplate
+		if err := rows.Scan(&t.ID, &t.TenantID, &t.Slug, &t.Name, &t.Description, &t.Strategy, &t.BaseConfig, &t.IsSystem); err != nil {
+			return nil, err
+		}
+		templates = append(templates, t)
+	}
+	return templates, nil
+}
+
+func (r *Repository) GetStepTemplateByID(id string, tenantID string) (*domain.StepTemplate, error) {
+	query := `SELECT id, tenant_id, slug, name, description, strategy, base_config, is_system FROM step_templates WHERE id = $1 AND (tenant_id = $2 OR is_system = TRUE)`
+	var t domain.StepTemplate
+	err := r.db.QueryRow(query, id, tenantID).Scan(&t.ID, &t.TenantID, &t.Slug, &t.Name, &t.Description, &t.Strategy, &t.BaseConfig, &t.IsSystem)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+func (r *Repository) CreateStepTemplate(t *domain.StepTemplate) error {
+	query := `INSERT INTO step_templates (id, tenant_id, slug, name, description, strategy, base_config, is_system, created_at, updated_at)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+	_, err := r.db.Exec(query, t.ID, t.TenantID, t.Slug, t.Name, t.Description, t.Strategy, t.BaseConfig, t.IsSystem, t.CreatedAt, t.UpdatedAt)
+	return err
+}
+
+func (r *Repository) UpdateStepTemplate(t *domain.StepTemplate) error {
+	query := `UPDATE step_templates SET name=$1, description=$2, base_config=$3, updated_at=$4 WHERE id=$5 AND tenant_id=$6`
+	_, err := r.db.Exec(query, t.Name, t.Description, t.BaseConfig, t.UpdatedAt, t.ID, t.TenantID)
+	return err
+}
+
+func (r *Repository) DeleteStepTemplate(id string, tenantID string) error {
+	query := `DELETE FROM step_templates WHERE id=$1 AND tenant_id=$2`
+	_, err := r.db.Exec(query, id, tenantID)
+	return err
+}
+
 func (r *Repository) DeleteFlow(id string) error {
 	// Manual Cascade: Delete associated sessions first
 	_, err := r.db.Exec(`DELETE FROM sessions WHERE flow_id = $1`, id)

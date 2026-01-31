@@ -54,10 +54,32 @@ type TenantUser struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type StepStrategy string
+
+const (
+	StrategyUIStep   StepStrategy = "UI_STEP"
+	StrategyCodeStep StepStrategy = "CODE_STEP"
+)
+
+type StepTemplate struct {
+	ID          uuid.UUID    `json:"id"`
+	TenantID    *uuid.UUID   `json:"tenant_id,omitempty"`
+	Slug        string       `json:"slug"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Strategy    StepStrategy `json:"strategy"`
+	BaseConfig  JSONB        `json:"base_config"`
+	IsSystem    bool         `json:"is_system"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+}
+
 type StepConfig struct {
-	StepID string                 `json:"step_id"`
-	Type   string                 `json:"type"`
-	Config map[string]interface{} `json:"config"`
+	StepID     string                 `json:"step_id"`
+	Type       string                 `json:"type"` // e.g., "document_scan" or "user_form"
+	TemplateID *uuid.UUID             `json:"template_id,omitempty"`
+	Strategy   StepStrategy           `json:"strategy"`
+	Config     map[string]interface{} `json:"config"`
 }
 
 // SQL helper for StepConfig array

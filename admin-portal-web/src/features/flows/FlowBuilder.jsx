@@ -13,6 +13,7 @@ import 'reactflow/dist/style.css';
 import Sidebar from './Sidebar';
 import StepNode from './nodes/StepNode';
 import StepPreviewModal from './StepPreviewModal';
+import StepConfigurationPanel from './StepConfigurationPanel';
 
 // Map custom node types
 const nodeTypes = {
@@ -28,6 +29,11 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
     const [previewStep, setPreviewStep] = useState(null);
+    const [selectedNode, setSelectedNode] = useState(null);
+
+    const onNodeClick = useCallback((event, node) => {
+        setSelectedNode(node);
+    }, []);
 
     const onPreview = useCallback((nodeData) => {
         setPreviewStep(nodeData);
@@ -107,6 +113,7 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
 
             const type = event.dataTransfer.getData('application/reactflow');
             const label = event.dataTransfer.getData('application/label');
+            const templateStr = event.dataTransfer.getData('application/template');
 
             // check if the dropped element is valid
             if (typeof type === 'undefined' || !type) {
@@ -118,13 +125,24 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
                 y: event.clientY,
             });
 
+            let template = null;
+            try {
+                template = JSON.parse(templateStr);
+            } catch (e) {
+                console.error("Failed to parse template data", e);
+            }
+
             const newNode = {
                 id: getId(),
                 type,
                 position,
                 data: {
                     label: label,
-                    type: label.toLowerCase().replace(' ', '_'),
+                    type: template ? template.slug : label.toLowerCase().replace(' ', '_'),
+                    strategy: template ? template.strategy : 'UI_STEP', // Default
+                    template_id: template ? template.id : null,
+                    is_system: template ? template.is_system : false,
+                    config: template ? template.base_config : {},
                     onPreview: onPreview
                 },
             };
@@ -141,14 +159,13 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
             return;
         }
 
-        // Simple linear serialization for now (Top to Bottom based on connections or Y position)
-        // For accurate flow, we should traverse from a "Start" node. 
-        // Here we just sort by Y position for simplicity in this MVP version to maintain order visually.
         const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y);
 
         const steps = sortedNodes.map(node => ({
             step_id: node.id,
             type: node.data.type,
+            strategy: node.data.strategy,
+            template_id: node.data.template_id,
             config: node.data.config || {}
         }));
 
@@ -169,6 +186,7 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
+                        onNodeClick={onNodeClick}
                         nodeTypes={nodeTypes}
                         deleteKeyCode={['Backspace', 'Delete']}
                         fitView
@@ -179,6 +197,23 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
                 </div>
                 <Sidebar />
             </ReactFlowProvider>
+
+            {selectedNode && (
+                <StepConfigurationPanel
+                    selectedNode={selectedNode}
+                    onUpdateNode={(nodeId, newData) => {
+                        setNodes((nds) =>
+                            nds.map((node) => {
+                                if (node.id === nodeId) {
+                                    return { ...node, data: newData };
+                                }
+                                return node;
+                            })
+                        );
+                    }}
+                    onClose={() => setSelectedNode(null)}
+                />
+            )}
 
             {previewStep && (
                 <StepPreviewModal
