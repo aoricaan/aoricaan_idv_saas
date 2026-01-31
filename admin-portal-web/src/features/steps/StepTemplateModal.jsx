@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import FormBuilder from './FormBuilder/FormBuilder';
+import CodeStepBuilder from './CodeStepBuilder/CodeStepBuilder';
 
 export default function StepTemplateModal({ isOpen, onClose, onSave, template }) {
     if (!isOpen) return null;
@@ -102,6 +103,22 @@ export default function StepTemplateModal({ isOpen, onClose, onSave, template })
                         <div className="mb-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">Form Builder</label>
                             <FormBuilder
+                                config={parsedConfig}
+                                onConfigChange={handleFormBuilderChange}
+                            />
+                            <div className="mt-2 text-xs text-gray-400">
+                                <details>
+                                    <summary className="cursor-pointer">View Generated JSON</summary>
+                                    <pre className="mt-2 p-2 bg-gray-50 rounded border border-gray-100 overflow-x-auto">
+                                        {formData.base_config}
+                                    </pre>
+                                </details>
+                            </div>
+                        </div>
+                    ) : formData.strategy === 'CODE_STEP' ? (
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Code Step Configuration</label>
+                            <CodeStepBuilder
                                 config={parsedConfig}
                                 onConfigChange={handleFormBuilderChange}
                             />
