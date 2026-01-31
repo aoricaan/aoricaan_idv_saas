@@ -10,6 +10,7 @@ export default function PropertiesPanel({ selectedField, onUpdateField, formActi
                 <div className="mt-8 w-full border-t pt-4 text-left">
                     <h4 className="text-xs font-bold text-gray-900 uppercase">Global Actions</h4>
                     <button
+                        type="button"
                         onClick={() => onUpdateActions('select')} // trigger action edit
                         className="mt-2 text-indigo-600 text-sm hover:underline cursor-pointer"
                     >
@@ -26,7 +27,7 @@ export default function PropertiesPanel({ selectedField, onUpdateField, formActi
             <div className="w-72 bg-white border-l border-gray-200 flex flex-col h-full">
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                     <h3 className="text-sm font-bold text-gray-800">Button Properties</h3>
-                    <button onClick={() => onUpdateActions('close')} className="text-gray-400 hover:text-gray-600">✕</button>
+                    <button type="button" onClick={() => onUpdateActions('close')} className="text-gray-400 hover:text-gray-600">✕</button>
                 </div>
                 <div className="p-4 space-y-4 overflow-y-auto flex-1">
                     <div>
@@ -52,7 +53,9 @@ export default function PropertiesPanel({ selectedField, onUpdateField, formActi
                             <div key={idx} className="bg-gray-50 p-2 rounded mb-2 border border-gray-200 relative">
                                 <div className="text-xs font-mono mb-1">{cond.field}</div>
                                 <div className="text-xs text-indigo-600">{cond.operator}</div>
+                                <div className="text-xs text-indigo-600">{cond.operator}</div>
                                 <button
+                                    type="button"
                                     onClick={() => {
                                         const newActions = [...formActions];
                                         newActions[0].conditions.splice(idx, 1);
@@ -78,6 +81,7 @@ export default function PropertiesPanel({ selectedField, onUpdateField, formActi
                                 </select>
                             </div>
                             <button
+                                type="button"
                                 onClick={() => {
                                     const field = document.getElementById('new-cond-field').value;
                                     const op = document.getElementById('new-cond-op').value;
@@ -105,7 +109,7 @@ export default function PropertiesPanel({ selectedField, onUpdateField, formActi
         <div className="w-72 bg-white border-l border-gray-200 flex flex-col h-full">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                 <h3 className="text-sm font-bold text-gray-800">Properties</h3>
-                <button onClick={() => onUpdateField(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+                <button type="button" onClick={() => onUpdateField(null)} className="text-gray-400 hover:text-gray-600">✕</button>
             </div>
 
             <div className="p-4 space-y-4 overflow-y-auto flex-1">
