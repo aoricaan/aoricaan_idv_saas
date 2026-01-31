@@ -26,6 +26,14 @@ export default function FormBuilder({ initialConfig, onConfigChange }) {
     const [activeDragItem, setActiveDragItem] = useState(null); // For DragOverlay
     const [editingActions, setEditingActions] = useState(false);
 
+    // Sync state when initialConfig changes (e.g. loading a different template)
+    React.useEffect(() => {
+        if (initialConfig) {
+            setFields(initialConfig.fields || []);
+            setActions(initialConfig.actions || [{ type: 'submit', label: 'Continue', conditions: [] }]);
+        }
+    }, [initialConfig]);
+
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
