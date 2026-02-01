@@ -22,7 +22,7 @@ export default function CodeStepBuilder({ config, onConfigChange }) {
     };
 
     const [localConfig, setLocalConfig] = useState(config && Object.keys(config).length > 0 ? config : defaultConfig);
-    const [activeTab, setActiveTab] = useState('general');
+    const [activeTab, setActiveTab] = useState('params');
 
     useEffect(() => {
         if (config) {
@@ -133,9 +133,39 @@ export default function CodeStepBuilder({ config, onConfigChange }) {
 
     return (
         <div className="space-y-4">
+            {/* HTTP Request Config - Always Visible */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">HTTP Request</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="col-span-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Method</label>
+                        <select
+                            value={localConfig.method || 'GET'}
+                            onChange={(e) => update({ method: e.target.value })}
+                            className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 border"
+                        >
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                    </div>
+                    <div className="col-span-3">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Endpoint URL</label>
+                        <input
+                            type="text"
+                            value={localConfig.endpoint || ''}
+                            onChange={(e) => update({ endpoint: e.target.value })}
+                            placeholder="https://api.example.com/check"
+                            className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 border font-mono"
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* Tabs Navigation */}
             <div className="flex space-x-1 border-b border-gray-200">
-                {['General', 'Params', 'Body', 'Headers'].map((tab) => {
+                {['Params', 'Body', 'Headers'].map((tab) => {
                     const isActive = activeTab === tab.toLowerCase();
                     return (
                         <button
@@ -143,12 +173,11 @@ export default function CodeStepBuilder({ config, onConfigChange }) {
                             type="button"
                             onClick={() => setActiveTab(tab.toLowerCase())}
                             className={`px-4 py-2 text-sm font-medium rounded-t-lg flex items-center ${isActive
-                                    ? 'bg-white border-x border-t border-gray-200 text-indigo-600'
-                                    : 'bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                ? 'bg-white border-x border-t border-gray-200 text-indigo-600'
+                                : 'bg-gray-50 text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                                 }`}
                         >
                             <Icons.General /> {/* Helper just for demo, real icon logic below */}
-                            {tab === 'General' && <Icons.General />}
                             {tab === 'Params' && <Icons.Params />}
                             {tab === 'Body' && <Icons.Body />}
                             {tab === 'Headers' && <Icons.Headers />}
@@ -160,51 +189,7 @@ export default function CodeStepBuilder({ config, onConfigChange }) {
 
             {/* Tab Content */}
             <div className="p-1">
-                {activeTab === 'general' && (
-                    <div className="space-y-6">
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">HTTP Request</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">Method</label>
-                                    <select
-                                        value={localConfig.method || 'GET'}
-                                        onChange={(e) => update({ method: e.target.value })}
-                                        className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 border"
-                                    >
-                                        <option value="GET">GET</option>
-                                        <option value="POST">POST</option>
-                                        <option value="PUT">PUT</option>
-                                        <option value="DELETE">DELETE</option>
-                                    </select>
-                                </div>
-                                <div className="col-span-3">
-                                    <label className="block text-xs font-medium text-gray-600 mb-1">Endpoint URL</label>
-                                    <input
-                                        type="text"
-                                        value={localConfig.endpoint || ''}
-                                        onChange={(e) => update({ endpoint: e.target.value })}
-                                        placeholder="https://api.example.com/check"
-                                        className="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm p-2 border font-mono"
-                                    />
-                                </div>
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {renderListBuilder("Expected Inputs", "inputs", [
-                                { key: 'key', placeholder: 'Key (e.g. user_id)', default: '' },
-                                { key: 'type', type: 'select', options: ['string', 'number', 'boolean', 'object'], default: 'string', width: 'w-24' },
-                                { key: 'required', type: 'checkbox', label: 'Required', default: true, width: 'w-16' }
-                            ], "+ Add Input")}
-
-                            {renderListBuilder("Outputs", "outputs", [
-                                { key: 'key', placeholder: 'Key (e.g. risk_score)', default: '' },
-                                { key: 'type', type: 'select', options: ['string', 'number', 'boolean', 'object'], default: 'string', width: 'w-24' }
-                            ], "+ Add Output")}
-                        </div>
-                    </div>
-                )}
 
                 {activeTab === 'params' && (
                     <div className="space-y-6">

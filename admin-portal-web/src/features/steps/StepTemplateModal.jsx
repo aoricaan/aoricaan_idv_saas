@@ -62,7 +62,7 @@ export default function StepTemplateModal({ isOpen, onClose, onSave, template })
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className={`bg-white rounded-lg p-6 w-full ${isUiStep ? 'max-w-6xl' : 'max-w-lg'} shadow-xl max-h-[90vh] overflow-y-auto`}>
+            <div className={`bg-white rounded-lg p-6 w-full ${isUiStep || formData.strategy === 'CODE_STEP' ? 'max-w-6xl' : 'max-w-lg'} shadow-xl max-h-[90vh] overflow-y-auto`}>
                 <h2 className="text-xl font-bold mb-4">{template ? 'Edit Step' : 'Create New Step'}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-4">
