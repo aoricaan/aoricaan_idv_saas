@@ -106,20 +106,7 @@ export default function StepConfigurationPanel({ selectedNode, onUpdateNode, onC
                 </button>
             </div>
 
-            {/* Header Info */}
-            <div className="mb-6">
-                <div className="flex items-center space-x-2 mb-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${data.strategy === 'UI_STEP' ? 'bg-indigo-100 text-indigo-800' : 'bg-green-100 text-green-800'}`}>
-                        {data.strategy}
-                    </span>
-                    <h4 className="font-medium text-gray-900 truncate">{data.label}</h4>
-                </div>
-                {templateConfig.method && (
-                    <div className="text-xs text-gray-500 font-mono bg-gray-50 p-2 rounded border border-gray-100 break-all">
-                        <span className="font-bold text-gray-700">{templateConfig.method}</span> {templateConfig.endpoint}
-                    </div>
-                )}
-            </div>
+
 
             {/* Dynamic Configuration Area */}
             <div className="flex-1 overflow-y-auto pr-1">
