@@ -96,7 +96,7 @@ export default function StepConfigurationPanel({ selectedNode, onUpdateNode, onC
     };
 
     return (
-        <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-lg border-l border-gray-200 p-4 overflow-y-auto z-10 transition-transform transform translate-x-0 flex flex-col">
+        <div className="absolute right-0 top-0 bottom-0 w-full md:w-[600px] lg:w-[700px] bg-white shadow-2xl border-l border-gray-200 p-6 overflow-y-auto z-50 transition-all transform translate-x-0 flex flex-col">
             <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-bold text-gray-800">Configuration</h3>
                 <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
