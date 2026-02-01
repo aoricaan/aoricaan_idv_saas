@@ -118,29 +118,27 @@ export default function StepConfigurationPanel({ selectedNode, onUpdateNode, onC
 
                 {data.strategy === 'CODE_STEP' && (
                     <>
-                        {templateConfig.inputs?.length === 0 &&
-                            templateConfig.path_params?.length === 0 &&
-                            templateConfig.query_params?.length === 0 &&
-                            templateConfig.headers?.length === 0 && (
+                        {(!templateConfig.path_params || templateConfig.path_params.length === 0) &&
+                            (!templateConfig.query_params || templateConfig.query_params.length === 0) &&
+                            (!templateConfig.headers || templateConfig.headers.length === 0) &&
+                            (!templateConfig.body_structure || templateConfig.body_structure.length === 0) && (
                                 <p className="text-sm text-gray-400 italic text-center py-4">No variable inputs defined for this step.</p>
                             )}
 
                         {renderDynamicSection("Path Parameters", templateConfig.path_params)}
                         {renderDynamicSection("Query Parameters", templateConfig.query_params)}
-                        {renderDynamicSection("Inputs (Context)", templateConfig.inputs)}
                         {renderDynamicSection("Headers", templateConfig.headers)}
                         {renderDynamicSection("Body Fields", templateConfig.body_structure)}
                     </>
                 )}
 
                 {data.strategy === 'UI_STEP' && (
-                    <div className="text-center py-10">
-                        <span className="text-2xl block mb-2">🎨</span>
-                        <p className="text-sm text-gray-500">
-                            UI Steps are interactive. <br />
-                            <span className="text-xs">Context mapping for pre-filling fields is coming soon.</span>
-                        </p>
-                    </div>
+                    <>
+                        {(!templateConfig.fields || templateConfig.fields.length === 0) && (
+                            <p className="text-sm text-gray-400 italic text-center py-4">No fields defined for this UI step.</p>
+                        )}
+                        {renderDynamicSection("Pre-fill Fields (Context)", templateConfig.fields?.map(f => ({ ...f, key: f.name })))}
+                    </>
                 )}
             </div>
 

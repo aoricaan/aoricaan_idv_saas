@@ -79,6 +79,7 @@ type StepConfig struct {
 	Type       string                 `json:"type"` // e.g., "document_scan" or "user_form"
 	TemplateID *uuid.UUID             `json:"template_id,omitempty"`
 	Strategy   StepStrategy           `json:"strategy"`
+	BaseConfig JSONB                  `json:"base_config,omitempty"`
 	Config     map[string]interface{} `json:"config"`
 }
 

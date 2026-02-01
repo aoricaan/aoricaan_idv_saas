@@ -55,7 +55,10 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
                     data: {
                         label: step.type === 'document_scan' ? 'Document Scan' : step.type,
                         type: step.type,
-                        config: step.config,
+                        strategy: step.strategy || 'UI_STEP',
+                        template_id: step.template_id,
+                        base_config: step.base_config || {},
+                        config: step.config || {},
                         onPreview: onPreview
                     }
                 });
@@ -142,7 +145,8 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
                     strategy: template ? template.strategy : 'UI_STEP', // Default
                     template_id: template ? template.id : null,
                     is_system: template ? template.is_system : false,
-                    config: template ? template.base_config : {},
+                    base_config: template ? template.base_config : {}, // Schema definition
+                    config: {}, // User values
                     onPreview: onPreview
                 },
             };
@@ -166,6 +170,7 @@ function FlowBuilderContent({ initialConfig, onConfigChange }) {
             type: node.data.type,
             strategy: node.data.strategy,
             template_id: node.data.template_id,
+            base_config: node.data.base_config || {},
             config: node.data.config || {}
         }));
 
